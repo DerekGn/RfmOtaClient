@@ -14,7 +14,7 @@ namespace RfmOta
         [Option('r', "retry", Required = false, Default = 1, HelpText = "The number of transmission retries")]
         public int RetryCount { get; set; }
 
-        [Option('t', "timeout", Required = false, Default = 1, HelpText = "The response timeout")]
-        public TimeSpan Timeout { get; set; }
+        [Option('t', "timeout", Required = false, Default = 1000, HelpText = "The response timeout in milli seconds")]
+        public int Timeout { get; set; }
     }
 }

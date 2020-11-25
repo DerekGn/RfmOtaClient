@@ -24,7 +24,7 @@ namespace RfmOta.RfmUsb
         public byte FifoThreshold { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public bool TxStartCondition { get; set; }
         public int RetryCount { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-        public TimeSpan Timeout { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public int Timeout { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
         public void Open(string serialPort)
         {

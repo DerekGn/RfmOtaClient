@@ -13,7 +13,7 @@ namespace RfmOta.RfmUsb
         byte FifoThreshold { get; set; }
         public bool TxStartCondition { get; set; }
         public int RetryCount { get; set; }
-        public TimeSpan Timeout { get; set; }
+        public int Timeout { get; set; }
         public void Open(string serialPort);
         public void Close();
         IList<byte> Transmit(IList<byte> data);

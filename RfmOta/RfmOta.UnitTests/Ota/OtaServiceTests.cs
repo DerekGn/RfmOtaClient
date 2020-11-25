@@ -1,25 +1,41 @@
-﻿
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
 using RfmOta.Ota;
 using RfmOta.RfmUsb;
-using System;
+using System.Collections.Generic;
 using System.IO;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace RfmOta.UnitTests.Ota
 {
-    public class OtaServiceTests
+    public class OtaServiceTests : BaseTests
     {
         private readonly IOtaService _otaService;
         private readonly Mock<IRfmUsb> _mockRfmusb;
 
-        public OtaServiceTests()
+        public OtaServiceTests(ITestOutputHelper output) : base(output)
         {
             _mockRfmusb = new Mock<IRfmUsb>();
 
             _otaService = new OtaService(Mock.Of<ILogger<IOtaService>>(), _mockRfmusb.Object);
+        }
+
+        [Fact]
+        public void TestOtaUpdatePingBootloaderFailed()
+        {
+            // Arrange
+            var stream = SetupHexStream();
+
+            _mockRfmusb.Setup(_ => _.Transmit(It.IsAny<IList<byte>>()))
+                .Returns(TestResponses.Empty);
+
+            // Act
+            var result = _otaService.OtaUpdate(new Options() { }, stream, out _);
+
+            // Assert
+            result.Should().BeFalse();
         }
 
         [Fact]
@@ -28,11 +44,52 @@ namespace RfmOta.UnitTests.Ota
             // Arrange
             var stream = SetupHexStream();
 
+            _mockRfmusb.SetupSequence(_ => _.Transmit(It.IsAny<IList<byte>>()))
+                .Returns(TestResponses.PingOk)
+                .Returns(TestResponses.Empty);
+
             // Act
-            var result = _otaService.OtaUpdate(new Options() { }, stream, out uint crc);
+            var result = _otaService.OtaUpdate(new Options() { }, stream, out _);
 
             // Assert
-            result.Should().BeTrue();
+            result.Should().BeFalse();
+        }
+
+        [Fact]
+        public void TestOtaUpdateEraseFailed()
+        {
+            // Arrange
+            var stream = SetupHexStream();
+
+            _mockRfmusb.SetupSequence(_ => _.Transmit(It.IsAny<IList<byte>>()))
+                .Returns(TestResponses.PingOk)
+                .Returns(TestResponses.FlashSizeOk)
+                .Returns(TestResponses.Empty);
+
+            // Act
+            var result = _otaService.OtaUpdate(new Options() { }, stream, out _);
+
+            // Assert
+            result.Should().BeFalse();
+        }
+
+        [Fact]
+        public void TestOtaUpdateSendHexData()
+        {
+            // Arrange
+            var stream = SetupHexStream();
+
+            _mockRfmusb.SetupSequence(_ => _.Transmit(It.IsAny<IList<byte>>()))
+                .Returns(TestResponses.PingOk)
+                .Returns(TestResponses.FlashSizeOk)
+                .Returns(TestResponses.EraseOk)
+                .Returns(TestResponses.Empty);
+
+            // Act
+            var result = _otaService.OtaUpdate(new Options() { }, stream, out _);
+
+            // Assert
+            result.Should().BeFalse();
         }
 
         private Stream SetupHexStream()

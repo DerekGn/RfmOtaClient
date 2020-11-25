@@ -28,7 +28,7 @@ namespace RfmOta.Ota
 
             _steps = new List<Func<bool>>
             {
-                () => StartOta(),
+                () => PingBootLoader(),
                 () => GetFlashSize(),
                 () => EraseFlash(),
                 () => SendHexData(),
@@ -119,7 +119,7 @@ namespace RfmOta.Ota
                 {
                     if (!SendAndValidateResponse(
                         new List<byte>() { 0x01, (byte)RequestType.FlashSize },
-                        PayloadSizes.FlashSizeResponse, out IList<byte> response))
+                        PayloadSizes.FlashSizeResponse, ResponseType.FlashSize, out IList<byte> response))
                     {
                         return false;
                     }
@@ -131,14 +131,33 @@ namespace RfmOta.Ota
                 });
         }
 
-        private bool StartOta()
+        private bool PingBootLoader()
         {
             return HandleRfmUsbOperation(
                 nameof(OtaService),
-                () => { return true; });
+                () =>
+                {
+                    if (!SendAndValidateResponse(
+                    new List<byte>() { 0x01, (byte)RequestType.Ping },
+                    PayloadSizes.PingResponse, ResponseType.Ping, out IList<byte> response))
+                    {
+                        return false;
+                    }
+
+                    if (response[0] != (byte)ResponseType.Ping)
+                    {
+                        _logger.LogInformation($"BootLoader Invalid ping Reponse: [{response[0]}]");
+
+                        return false;
+                    }
+
+                    _logger.LogInformation("BootLoader Ping Ok");
+
+                    return true;
+                });
         }
 
-        private bool SendAndValidateResponse(IList<byte> request, int expectedSize, out IList<byte> response)
+        private bool SendAndValidateResponse(IList<byte> request, int expectedSize, ResponseType expectedResponse, out IList<byte> response)
         {
             response = _rfmUsb.Transmit(request);
 
@@ -201,7 +220,7 @@ namespace RfmOta.Ota
 
         #region
         private bool _disposedValue;
-        
+
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposedValue)

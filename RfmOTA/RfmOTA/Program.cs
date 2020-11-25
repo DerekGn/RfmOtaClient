@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using RfmOta.Ota;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -12,9 +13,17 @@ namespace RfmOta
     class Program
     {
         private static ServiceProvider _serviceProvider;
+        private static IConfiguration _configuration;
 
         static void Main(string[] args)
         {
+            _configuration = SetupConfiguration(args);
+
+            Log.Logger = new LoggerConfiguration()
+                .ReadFrom.Configuration(_configuration)
+                .Enrich.FromLogContext()
+                .CreateLogger();
+
             _serviceProvider = BuildServiceProvider(args);
 
             Parser.Default.ParseArguments<Options>(args)
@@ -30,8 +39,8 @@ namespace RfmOta
             {
                 using var stream = File.OpenRead(options.HexFile);
                 using var otaservice = _serviceProvider.GetService<IOtaService>();
-                
-                if(otaservice.OtaUpdate(options, stream, out uint crc))
+
+                if (otaservice.OtaUpdate(options, stream, out uint crc))
                 {
                     logger.LogWarning($"OTA flash update completed. Crc: [{crc}]");
                 }
@@ -56,10 +65,9 @@ namespace RfmOta
 
         private static ServiceProvider BuildServiceProvider(string[] args)
         {
-            IConfiguration configuration = SetupConfiguration(args);
-
             var serviceCollection = new ServiceCollection()
-                .AddSingleton(configuration)
+                .AddLogging(builder => builder.AddSerilog())
+                .AddSingleton(_configuration)
                 .AddLogging()
                 .AddOta();
 

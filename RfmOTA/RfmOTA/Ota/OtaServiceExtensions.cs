@@ -7,7 +7,7 @@ namespace RfmOta.Ota
         public static IServiceCollection AddOta(this IServiceCollection serviceCollection)
         {
             serviceCollection.AddSingleton<IOtaService, OtaService>();
-
+            
             return serviceCollection;
         }
     }

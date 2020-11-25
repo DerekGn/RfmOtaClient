@@ -3,6 +3,7 @@
     internal enum RequestType
     {
         Crc,
+        Ping,
         Erase,
         Reboot,
         WriteEnd,
