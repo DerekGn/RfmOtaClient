@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 
-namespace RfmOta.RfmUsb
+namespace RfmOta.Rfm
 {
     internal static class RfmUsbServiceExtensions
     {

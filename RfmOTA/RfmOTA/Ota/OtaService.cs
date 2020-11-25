@@ -1,7 +1,7 @@
 ﻿using HexIO;
 using Microsoft.Extensions.Logging;
-using RfmOta.RfmUsb;
-using RfmOta.RfmUsb.Exceptions;
+using RfmOta.Rfm;
+using RfmOta.Rfm.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;

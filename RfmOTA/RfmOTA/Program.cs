@@ -24,7 +24,7 @@ namespace RfmOta
                 .Enrich.FromLogContext()
                 .CreateLogger();
 
-            _serviceProvider = BuildServiceProvider(args);
+            _serviceProvider = BuildServiceProvider();
 
             Parser.Default.ParseArguments<Options>(args)
                 .WithParsed(RunOptions)
@@ -63,7 +63,7 @@ namespace RfmOta
         {
         }
 
-        private static ServiceProvider BuildServiceProvider(string[] args)
+        private static ServiceProvider BuildServiceProvider()
         {
             var serviceCollection = new ServiceCollection()
                 .AddLogging(builder => builder.AddSerilog())

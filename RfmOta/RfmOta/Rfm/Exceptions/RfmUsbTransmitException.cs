@@ -1,4 +1,4 @@
-﻿namespace RfmOta.RfmUsb.Exceptions
+﻿namespace RfmOta.Rfm.Exceptions
 {
 
     [System.Serializable]

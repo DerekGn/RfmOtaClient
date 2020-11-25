@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Logging;
 using Moq;
 using RfmOta.Ota;
-using RfmOta.RfmUsb;
+using RfmOta.Rfm;
 using System.Collections.Generic;
 using System.IO;
 using Xunit;

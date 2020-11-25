@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace RfmOta.RfmUsb
+namespace RfmOta.Rfm
 {
     internal interface IRfmUsb : IDisposable
     {

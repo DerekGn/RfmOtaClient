@@ -1,4 +1,4 @@
-﻿namespace RfmOta.RfmUsb
+﻿namespace RfmOta.Rfm
 {
     internal enum ExitCondition
     {

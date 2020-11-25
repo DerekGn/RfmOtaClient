@@ -3,13 +3,14 @@ using RfmOta.Ports;
 using System;
 using System.Collections.Generic;
 
-namespace RfmOta.RfmUsb
+namespace RfmOta.Rfm
 {
     internal class RfmUsb : IRfmUsb
     {
         private readonly ISerialPortFactory _serialPortFactory;
         private readonly ILogger<IRfmUsb> _logger;
-
+        private ISerialPort _serialPort;
+        
         public RfmUsb(ILogger<IRfmUsb> logger, ISerialPortFactory serialPortFactory)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -28,10 +29,20 @@ namespace RfmOta.RfmUsb
 
         public void Open(string serialPort)
         {
+            if(_serialPort == null && !_serialPort.IsOpen)
+            {
+                _serialPort = _serialPortFactory.CreateSerialPortInstance(serialPort);
+
+                _serialPort.Open();
+            }
         }
 
         public void Close()
         {
+            if(_serialPort != null && _serialPort.IsOpen)
+            {
+                _serialPort.Close();
+            }
         }
 
         public IList<byte> Transmit(IList<byte> data)
@@ -41,7 +52,7 @@ namespace RfmOta.RfmUsb
 
         public void Send(IList<byte> data)
         {
-            throw new NotImplementedException();
+
         }
 
         private bool TryCreateSerialPortInstance(string serialPort, out ISerialPort instance)
