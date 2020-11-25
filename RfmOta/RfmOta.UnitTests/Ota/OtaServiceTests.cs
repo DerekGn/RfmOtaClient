@@ -74,7 +74,7 @@ namespace RfmOta.UnitTests.Ota
         }
 
         [Fact]
-        public void TestOtaUpdateSendHexData()
+        public void TestOtaUpdateSendHexDataFailed()
         {
             // Arrange
             var stream = SetupHexStream();
@@ -90,6 +90,71 @@ namespace RfmOta.UnitTests.Ota
 
             // Assert
             result.Should().BeFalse();
+        }
+
+        [Fact]
+        public void TestOtaUpdateGetCrcFailed()
+        {
+            // Arrange
+            var stream = SetupHexStream();
+
+            _mockRfmusb.SetupSequence(_ => _.Transmit(It.IsAny<IList<byte>>()))
+                .Returns(TestResponses.PingOk)
+                .Returns(TestResponses.FlashSizeOk)
+                .Returns(TestResponses.EraseOk)
+                .Returns(TestResponses.Ok)
+                .Returns(TestResponses.Ok)
+                .Returns(TestResponses.Ok)
+                .Returns(TestResponses.Ok)
+                .Returns(TestResponses.Empty);
+
+            // Act
+            var result = _otaService.OtaUpdate(new Options() { }, stream, out _);
+
+            // Assert
+            result.Should().BeFalse();
+        }
+
+        [Fact]
+        public void TestOtaUpdateRebootFailed()
+        {
+            // Arrange
+            var stream = SetupHexStream();
+
+            _mockRfmusb.SetupSequence(_ => _.Transmit(It.IsAny<IList<byte>>()))
+                .Returns(TestResponses.PingOk)
+                .Returns(TestResponses.FlashSizeOk)
+                .Returns(TestResponses.EraseOk)
+                .Returns(TestResponses.Empty);
+
+            // Act
+            var result = _otaService.OtaUpdate(new Options() { }, stream, out _);
+
+            // Assert
+            result.Should().BeFalse();
+        }
+
+        [Fact]
+        public void TestOtaUpdateSuceeded()
+        {
+            // Arrange
+            var stream = SetupHexStream();
+
+            _mockRfmusb.SetupSequence(_ => _.Transmit(It.IsAny<IList<byte>>()))
+               .Returns(TestResponses.PingOk)
+               .Returns(TestResponses.FlashSizeOk)
+               .Returns(TestResponses.EraseOk)
+               .Returns(TestResponses.Ok)
+               .Returns(TestResponses.Ok)
+               .Returns(TestResponses.Ok)
+               .Returns(TestResponses.Ok)
+               .Returns(TestResponses.Crc);
+
+            // Act
+            var result = _otaService.OtaUpdate(new Options() { }, stream, out _);
+
+            // Assert
+            result.Should().BeTrue();
         }
 
         private Stream SetupHexStream()

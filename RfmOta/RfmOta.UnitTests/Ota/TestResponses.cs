@@ -7,10 +7,14 @@ namespace RfmOta.UnitTests.Ota
     {
         public static List<byte> Empty = new List<byte>();
 
+        public static List<byte> Ok = new List<byte>() { (byte)ResponseType.Ok };
+
         public static List<byte> PingOk = new List<byte>() { (byte)ResponseType.Ping };
 
-        public static List<byte> FlashSizeOk = new List<byte>() { (byte)ResponseType.FlashSize, 0xAA, 0x55, 0xAA, 0x55 };
-
         public static List<byte> EraseOk = new List<byte>() { (byte)ResponseType.Erase };
+
+        public static List<byte> Crc = new List<byte>() { (byte)ResponseType.Crc, 0xAA, 0x55, 0xAA, 0x55 };
+
+        public static List<byte> FlashSizeOk = new List<byte>() { (byte)ResponseType.FlashSize, 0xAA, 0x55, 0xAA, 0x55 };
     }
 }

@@ -44,8 +44,6 @@ namespace RfmOta.Ota
 
             _stream = stream ?? throw new ArgumentNullException(nameof(stream));
 
-            _stream = stream;
-
             bool result = true;
 
             try
@@ -58,6 +56,7 @@ namespace RfmOta.Ota
                     if (!step())
                     {
                         result = false;
+                        break;
                     }
                 }
 
@@ -75,14 +74,32 @@ namespace RfmOta.Ota
         {
             return HandleRfmUsbOperation(
                 nameof(OtaService),
-                () => { return true; });
+                () =>
+                {
+                    if (!SendAndValidateResponse(
+                        new List<byte>() { 0x01, (byte)RequestType.Crc },
+                        PayloadSizes.CrcResponse, ResponseType.Crc, out IList<byte> response))
+                    {
+                        return false;
+                    }
+
+                    _crc = BitConverter.ToUInt32(response.ToArray(), 1);
+                    _logger.LogInformation($"Flash Crc: [{_crc}]");
+
+                    return true;
+                });
         }
 
         private bool Reboot()
         {
             return HandleRfmUsbOperation(
                 nameof(OtaService),
-                () => { return true; });
+                () =>
+                {
+                    _rfmUsb.Transmit(new List<byte>() { 0x01, (byte)RequestType.Reboot });
+
+                    return true;
+                });
         }
 
         private bool SendHexData()
@@ -91,15 +108,25 @@ namespace RfmOta.Ota
                 nameof(OtaService),
                 () =>
                 {
-                    //using IntelHexReader hexReader = new IntelHexReader(stream);
+                    using IntelHexReader hexReader = new IntelHexReader(_stream);
 
-                    //while (hexReader.Read(out uint address, out IList<byte> data))
-                    //{
-                    //    _logger.LogInformation($"Writing Address: [0x{address:X4}] Count: [0x{data.Count:X2}]" +
-                    //        $" Data: [{BitConverter.ToString(data.ToArray()).Replace("-", "")}]");
+                    while (hexReader.Read(out uint address, out IList<byte> data))
+                    {
+                        _logger.LogInformation($"Writing Address: [0x{address:X4}] Count: [0x{data.Count:X2}]" +
+                            $" Data: [{BitConverter.ToString(data.ToArray()).Replace("-", "")}]");
 
-                    //    var responseData = _rfmUsb.Transmit(new List<byte>());
-                    //}
+                        var requestData = new List<byte>() { (byte)RequestType.Write };
+                        requestData.AddRange(BitConverter.GetBytes(address));
+                        requestData.AddRange(data);
+
+                        if (!SendAndValidateResponse(
+                            new List<byte>() { 0x01, (byte)RequestType.Write },
+                            PayloadSizes.OkResponse, ResponseType.Ok, out IList<byte> response))
+                        {
+                            return false;
+                        }
+                    }
+
                     return true;
                 });
         }
@@ -108,7 +135,19 @@ namespace RfmOta.Ota
         {
             return HandleRfmUsbOperation(
                 nameof(OtaService),
-                () => { return true; });
+                () =>
+                {
+                    if (!SendAndValidateResponse(
+                        new List<byte>() { 0x01, (byte)RequestType.Erase },
+                        PayloadSizes.EraseResponse, ResponseType.Erase, out IList<byte> response))
+                    {
+                        return false;
+                    }
+
+                    _logger.LogInformation("BootLoader Erase Ok");
+
+                    return true;
+                });
         }
 
         private bool GetFlashSize()
@@ -138,16 +177,9 @@ namespace RfmOta.Ota
                 () =>
                 {
                     if (!SendAndValidateResponse(
-                    new List<byte>() { 0x01, (byte)RequestType.Ping },
-                    PayloadSizes.PingResponse, ResponseType.Ping, out IList<byte> response))
+                        new List<byte>() { 0x01, (byte)RequestType.Ping },
+                        PayloadSizes.PingResponse, ResponseType.Ping, out IList<byte> response))
                     {
-                        return false;
-                    }
-
-                    if (response[0] != (byte)ResponseType.Ping)
-                    {
-                        _logger.LogInformation($"BootLoader Invalid ping Reponse: [{response[0]}]");
-
                         return false;
                     }
 
@@ -157,16 +189,27 @@ namespace RfmOta.Ota
                 });
         }
 
-        private bool SendAndValidateResponse(IList<byte> request, int expectedSize, ResponseType expectedResponse, out IList<byte> response)
+        private bool SendAndValidateResponse(IList<byte> request,
+            int expectedSize, ResponseType expectedResponse,
+            out IList<byte> response, [CallerMemberName] string memberName = "")
         {
             response = _rfmUsb.Transmit(request);
 
-            if (!(response.Count > 0 && response.Count < expectedSize))
+            if (response.Count == 0 || response.Count < expectedSize)
             {
                 _logger.LogError($"Invalid response received [{BitConverter.ToString(response.ToArray())}]");
 
                 return false;
             }
+
+            if (response[0] != (byte)expectedResponse)
+            {
+                _logger.LogInformation($"BootLoader Invalid {memberName} Response: [{response[0]}]");
+
+                return false;
+            }
+
+            _logger.LogInformation($"BootLoader {memberName} Ok");
 
             return true;
         }

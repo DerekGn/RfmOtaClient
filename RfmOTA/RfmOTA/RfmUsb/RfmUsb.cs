@@ -33,7 +33,13 @@ namespace RfmOta.RfmUsb
         public void Close()
         {
         }
+
         public IList<byte> Transmit(IList<byte> data)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Send(IList<byte> data)
         {
             throw new NotImplementedException();
         }
@@ -76,6 +82,7 @@ namespace RfmOta.RfmUsb
             Dispose(disposing: true);
             System.GC.SuppressFinalize(this);
         }
+
         #endregion
     }
 }

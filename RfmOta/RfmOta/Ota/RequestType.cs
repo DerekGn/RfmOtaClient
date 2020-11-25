@@ -6,8 +6,7 @@
         Ping,
         Erase,
         Reboot,
-        WriteEnd,
-        FlashSize,
-        WriteStart
+        Write,
+        FlashSize
     };
 }

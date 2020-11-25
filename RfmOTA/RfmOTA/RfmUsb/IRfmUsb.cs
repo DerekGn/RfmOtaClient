@@ -17,5 +17,6 @@ namespace RfmOta.RfmUsb
         public void Open(string serialPort);
         public void Close();
         IList<byte> Transmit(IList<byte> data);
+        void Send(IList<byte> data);
     }
 }
