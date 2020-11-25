@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using RfmOta.Ports;
 using System;
+using System.Collections.Generic;
 
 namespace RfmOta.RfmUsb
 {
@@ -21,8 +22,9 @@ namespace RfmOta.RfmUsb
         public IntermediateMode IntermediateMode { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public ExitCondition ExitCondition { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public byte FifoThreshold { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-
         public bool TxStartCondition { get; set; }
+        public int RetryCount { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public TimeSpan Timeout { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
         public void Open(string serialPort)
         {
@@ -30,6 +32,10 @@ namespace RfmOta.RfmUsb
 
         public void Close()
         {
+        }
+        public IList<byte> Transmit(IList<byte> data)
+        {
+            throw new NotImplementedException();
         }
 
         private bool TryCreateSerialPortInstance(string serialPort, out ISerialPort instance)

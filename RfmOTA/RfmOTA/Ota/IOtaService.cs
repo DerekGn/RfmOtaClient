@@ -1,9 +1,10 @@
 ﻿using System;
+using System.IO;
 
 namespace RfmOta.Ota
 {
     interface IOtaService : IDisposable
     {
-        void OtaUpdate(string hexFile, string serialPort);
+        bool OtaUpdate(Options options, Stream stream, out uint crc);
     }
 }

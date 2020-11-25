@@ -28,8 +28,21 @@ namespace RfmOta
 
             try
             {
+                using var stream = File.OpenRead(options.HexFile);
                 using var otaservice = _serviceProvider.GetService<IOtaService>();
-                otaservice.OtaUpdate(options.HexFile, options.SerialPort);
+                
+                if(otaservice.OtaUpdate(options, stream, out uint crc))
+                {
+                    logger.LogWarning($"OTA flash update completed. Crc: [{crc}]");
+                }
+                else
+                {
+                    logger.LogWarning("OTA flash update failed");
+                }
+            }
+            catch (FileNotFoundException)
+            {
+                logger.LogWarning($"Unable to find file: [{options.HexFile}]");
             }
             catch (Exception ex)
             {
