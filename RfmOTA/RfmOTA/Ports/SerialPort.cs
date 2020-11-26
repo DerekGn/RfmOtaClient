@@ -1,6 +1,8 @@
 ﻿
 using System;
+using System.IO;
 using System.IO.Ports;
+using System.Text;
 
 namespace RfmOta.Ports
 {
@@ -10,76 +12,148 @@ namespace RfmOta.Ports
 
         public SerialPort(string serialPort)
         {
-            if(string.IsNullOrWhiteSpace(serialPort))
+            if (string.IsNullOrWhiteSpace(serialPort))
             {
                 throw new ArgumentOutOfRangeException(nameof(serialPort));
             }
 
             _serialPort = new System.IO.Ports.SerialPort
             {
-                PortName = serialPort,
+                PortName = serialPort
             };
 
-            _serialPort.DataReceived += new SerialDataReceivedEventHandler(DataReceivedHandler);
-            _serialPort.ErrorReceived += new SerialErrorReceivedEventHandler(ErrorReceivedHandler);
+            _serialPort.ErrorReceived += ErrorReceivedHandler;
+            _serialPort.DataReceived += DataReceivedHandler;
+            _serialPort.PinChanged += PinChangedHandler;
+        }
+        public Handshake Handshake { get => _serialPort.Handshake; set => _serialPort.Handshake = value; }
+        public Encoding Encoding { get => _serialPort.Encoding; set => _serialPort.Encoding = value; }
+        public bool DtrEnable { get => _serialPort.DtrEnable; set => _serialPort.DtrEnable = value; }
+        public bool CtsHolding => _serialPort.CtsHolding;
+        public bool DiscardNull { get => _serialPort.DiscardNull; set => _serialPort.DiscardNull = value; }
+        public int DataBits { get => _serialPort.DataBits; set => _serialPort.DataBits = value; }
+        public bool IsOpen => _serialPort.IsOpen;
+        public bool DsrHolding => _serialPort.DsrHolding;
+        public string NewLine { get => _serialPort.NewLine; set => _serialPort.NewLine = value; }
+        public int ReadBufferSize { get => _serialPort.ReadBufferSize; set => _serialPort.ReadBufferSize = value; }
+        public byte ParityReplace { get => _serialPort.ParityReplace; set => _serialPort.ParityReplace = value; }
+        public string PortName { get => _serialPort.PortName; set => _serialPort.PortName = value; }
+        public bool CDHolding => _serialPort.CDHolding;
+        public int ReadTimeout { get => _serialPort.ReadTimeout; set => _serialPort.ReadTimeout = value; }
+        public int ReceivedBytesThreshold { get => _serialPort.ReceivedBytesThreshold; set => _serialPort.ReceivedBytesThreshold = value; }
+        public bool RtsEnable { get => _serialPort.RtsEnable; set => _serialPort.RtsEnable = value; }
+        public StopBits StopBits { get => _serialPort.StopBits; set => _serialPort.StopBits = value; }
+        public int WriteBufferSize { get => _serialPort.WriteBufferSize; set => _serialPort.WriteBufferSize = value; }
+        public int WriteTimeout { get => _serialPort.WriteTimeout; set => _serialPort.WriteTimeout = value; }
+        public Parity Parity { get => _serialPort.Parity; set => _serialPort.Parity = value; }
+        public int BytesToWrite => _serialPort.BytesToWrite;
+        public int BaudRate { get => _serialPort.BaudRate; set => _serialPort.BaudRate = value; }
+        public bool BreakState { get => _serialPort.BreakState; set => _serialPort.BreakState = value; }
+        public Stream BaseStream => _serialPort.BaseStream;
+        public int BytesToRead => _serialPort.BytesToRead;
+        public event SerialDataReceivedEventHandler DataReceived;
+        public event SerialPinChangedEventHandler PinChanged;
+        public event SerialErrorReceivedEventHandler ErrorReceived;
+
+        public void Close()
+        {
+            _serialPort.Close();
         }
 
-        public bool IsOpen => _serialPort != null && _serialPort.IsOpen;
+        public void DiscardInBuffer()
+        {
+            _serialPort.DiscardInBuffer();
+        }
+
+        public void DiscardOutBuffer()
+        {
+            _serialPort.DiscardOutBuffer();
+        }
+
+        public void Dispose()
+        {
+            _serialPort.Dispose();
+            _serialPort.ErrorReceived -= ErrorReceivedHandler;
+            _serialPort.DataReceived -= DataReceivedHandler;
+            _serialPort.PinChanged -= PinChangedHandler;
+        }
 
         public void Open()
         {
             _serialPort.Open();
         }
 
-        public void Close()
+        public int Read(byte[] buffer, int offset, int count)
         {
-            _serialPort.Close();
+            return _serialPort.Read(buffer, offset, count);
         }
+
+        public int Read(char[] buffer, int offset, int count)
+        {
+            return _serialPort.Read(buffer, offset, count);
+        }
+
+        public int ReadByte()
+        {
+            return _serialPort.ReadByte();
+        }
+
+        public int ReadChar()
+        {
+            return _serialPort.ReadChar();
+        }
+
+        public string ReadExisting()
+        {
+            return _serialPort.ReadExisting();
+        }
+
+        public string ReadLine()
+        {
+            return _serialPort.ReadLine();
+        }
+
+        public string ReadTo(string value)
+        {
+            return _serialPort.ReadTo(value);
+        }
+
+        public void Write(byte[] buffer, int offset, int count)
+        {
+            _serialPort.Write(buffer, offset, count);
+        }
+
         public void Write(string text)
         {
             _serialPort.Write(text);
         }
 
-        private void ErrorReceivedHandler(object sender, SerialErrorReceivedEventArgs e)
+        public void Write(char[] buffer, int offset, int count)
         {
+            _serialPort.Write(buffer, offset, count);
+        }
+
+        public void WriteLine(string text)
+        {
+            _serialPort.Write(text);
+        }
+
+        private void PinChangedHandler(object sender, SerialPinChangedEventArgs e)
+        {
+            SerialPinChangedEventHandler handler = PinChanged;
+            handler?.Invoke(this, e);
         }
 
         private void DataReceivedHandler(object sender, SerialDataReceivedEventArgs e)
         {
-            var serialPort = (System.IO.Ports.SerialPort)sender;
+            SerialDataReceivedEventHandler handler = DataReceived;
+            handler?.Invoke(this, e);
         }
 
-        #region
-        private bool disposedValue;
-
-        protected virtual void Dispose(bool disposing)
+        private void ErrorReceivedHandler(object sender, SerialErrorReceivedEventArgs e)
         {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    // TODO: dispose managed state (managed objects)
-                }
-
-                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
-                // TODO: set large fields to null
-                disposedValue = true;
-            }
+            SerialErrorReceivedEventHandler handler = ErrorReceived;
+            handler?.Invoke(this, e);
         }
-
-        // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
-        // ~SerialPort()
-        // {
-        //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-        //     Dispose(disposing: false);
-        // }
-
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            System.GC.SuppressFinalize(this);
-        }
-        #endregion
     }
 }

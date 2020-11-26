@@ -1,7 +1,10 @@
 ﻿using Microsoft.Extensions.Logging;
 using RfmOta.Ports;
+using RfmOta.Rfm.Exceptions;
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.IO.Ports;
 using System.Linq;
 using System.Threading;
 
@@ -16,6 +19,7 @@ namespace RfmOta.Rfm
         private IntermediateMode _intermediateMode;
         private EnterCondition _enterCondition;
         private ExitCondition _exitCondition;
+        private SerialError _serialError;
         private ISerialPort _serialPort;
         private bool _txStartCondition;
         private bool _variableLenght;
@@ -27,24 +31,25 @@ namespace RfmOta.Rfm
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _serialPortFactory = serialPortFactory ?? throw new ArgumentNullException(nameof(serialPortFactory));
 
-            _autoResetEvent = new AutoResetEvent(false); 
+            _autoResetEvent = new AutoResetEvent(false);
         }
 
         public byte PayloadLenght
         {
             get => _payloadLenght;
-            set { 
+            set
+            {
                 _payloadLenght = value;
-                SendWithAck($"s-pl {_payloadLenght:0xFF}");
+                SendCommand($"s-pl 0x{_payloadLenght:X}");
             }
         }
         public bool VariableLenght
-        { 
+        {
             get => _variableLenght;
             set
             {
                 _variableLenght = value;
-                SendWithAck($"s-pf {_variableLenght}");
+                SendCommand($"s-pf {{_variableLenght ? 1 : 0}}");
             }
         }
         public EnterCondition EnterCondition
@@ -53,16 +58,16 @@ namespace RfmOta.Rfm
             set
             {
                 _enterCondition = value;
-                SendWithAck($"s-amec {_enterCondition}");
+                SendCommand($"s-amec 0x{((byte)_enterCondition):X}");
             }
         }
-        public IntermediateMode IntermediateMode 
+        public IntermediateMode IntermediateMode
         {
             get => _intermediateMode;
-            set 
+            set
             {
                 _intermediateMode = value;
-                SendWithAck($"s-im {_intermediateMode}");
+                SendCommand($"s-im {_intermediateMode}");
             }
         }
         public ExitCondition ExitCondition
@@ -71,7 +76,7 @@ namespace RfmOta.Rfm
             set
             {
                 _exitCondition = value;
-                SendWithAck($"s-amexc {_exitCondition}");
+                SendCommand($"s-amexc {_exitCondition}");
             }
         }
         public byte FifoThreshold
@@ -80,7 +85,7 @@ namespace RfmOta.Rfm
             set
             {
                 _fifoThreshold = value;
-                SendWithAck($"s-ft {_fifoThreshold}");
+                SendCommand($"s-ft {_fifoThreshold}");
             }
         }
         public bool TxStartCondition
@@ -89,23 +94,41 @@ namespace RfmOta.Rfm
             set
             {
                 _txStartCondition = value;
-                SendWithAck($"s-tsc {_txStartCondition}");
+                SendCommand($"s-tsc {_txStartCondition}");
             }
         }
         public int RetryCount { get; set; }
-        public int Timeout { get ; set; }
+        public int Timeout { get => _serialPort.ReadTimeout; set => _serialPort.ReadTimeout = value; }
         public void Open(string serialPort)
         {
-            if(_serialPort == null)
+            try
             {
-                _serialPort = _serialPortFactory.CreateSerialPortInstance(serialPort);
+                if (_serialPort == null)
+                {
+                    _serialPort = _serialPortFactory.CreateSerialPortInstance(serialPort);
 
-                _serialPort.Open();
+                    _serialPort.NewLine = "\r\n";
+                    _serialPort.DtrEnable = true;
+                    _serialPort.RtsEnable = true;
+#warning TODO cleanup in dispose
+                    _serialPort.DataReceived += SerialPortDataReceived;
+                    _serialPort.ErrorReceived += SerialPortErrorReceived;
+                    _serialPort.PinChanged += SerialPortPinChanged;
+                    _serialPort.Open();
+                }
+            }
+            catch (FileNotFoundException ex)
+            {
+                _logger.LogDebug(ex, "Exception occurred opening serial port");
+
+                throw new RfmUsbSerialPortNotFoundException(
+                    $"Unable to open serial port [{serialPort}] Reason: [{ex.Message}]. " +
+                    $"Available Serial Ports: [{string.Join(", ", _serialPortFactory.GetSerialPorts())}]");
             }
         }
         public void Close()
         {
-            if(_serialPort != null && _serialPort.IsOpen)
+            if (_serialPort != null && _serialPort.IsOpen)
             {
                 _serialPort.Close();
             }
@@ -130,12 +153,32 @@ namespace RfmOta.Rfm
 
             _serialPort.Write($"{BitConverter.ToString(data.ToArray())}");
         }
-
-        private void SendWithAck(string text)
+        private void SendCommand(string command)
         {
-            _serialPort.Write(text);
+            _serialPort.Write($"{command}\r\n");
 
-            _autoResetEvent.WaitOne();
+            var result = _serialPort.ReadLine();
+
+            if(result != "OK")
+            {
+                throw new RfmUsbCommandExecutionException($"Command [{command}] Execution Failed Reason: [{result}]");
+            }
+        }
+
+        private void SerialPortErrorReceived(object sender, SerialErrorReceivedEventArgs e)
+        {
+            _serialError = e.EventType;
+
+            _autoResetEvent.Set();
+        }
+
+        private void SerialPortPinChanged(object sender, SerialPinChangedEventArgs e)
+        {
+        }
+
+        private void SerialPortDataReceived(object sender, SerialDataReceivedEventArgs e)
+        {
+            _autoResetEvent.Set();
         }
 
         #region IDisposible

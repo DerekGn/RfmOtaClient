@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using RfmOta.Ota;
 using RfmOta.Ports;
 using RfmOta.Rfm;
+using RfmOta.Rfm.Exceptions;
 using Serilog;
 using System;
 using System.Collections.Generic;
@@ -51,9 +52,17 @@ namespace RfmOta
                     logger.LogWarning("OTA flash update failed");
                 }
             }
+            catch(RfmUsbSerialPortNotFoundException ex)
+            {
+                logger.LogError(ex.Message);
+            }
+            catch (RfmUsbCommandExecutionException ex)
+            {
+                logger.LogError(ex.Message);
+            }
             catch (FileNotFoundException)
             {
-                logger.LogWarning($"Unable to find file: [{options.HexFile}]");
+                logger.LogError($"Unable to find file: [{options.HexFile}]");
             }
             catch (Exception ex)
             {
