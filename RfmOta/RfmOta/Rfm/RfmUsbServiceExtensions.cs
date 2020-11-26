@@ -4,7 +4,7 @@ namespace RfmOta.Rfm
 {
     internal static class RfmUsbServiceExtensions
     {
-        public static IServiceCollection AddOta(this IServiceCollection serviceCollection)
+        public static IServiceCollection AddRfmUsb(this IServiceCollection serviceCollection)
         {
             serviceCollection.AddSingleton<IRfmUsb, RfmUsb>();
 

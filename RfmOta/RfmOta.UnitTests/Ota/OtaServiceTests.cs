@@ -28,7 +28,7 @@ namespace RfmOta.UnitTests.Ota
             // Arrange
             var stream = SetupHexStream();
 
-            _mockRfmusb.Setup(_ => _.Transmit(It.IsAny<IList<byte>>()))
+            _mockRfmusb.Setup(_ => _.SendAwait(It.IsAny<IList<byte>>()))
                 .Returns(TestResponses.Empty);
 
             // Act
@@ -44,7 +44,7 @@ namespace RfmOta.UnitTests.Ota
             // Arrange
             var stream = SetupHexStream();
 
-            _mockRfmusb.SetupSequence(_ => _.Transmit(It.IsAny<IList<byte>>()))
+            _mockRfmusb.SetupSequence(_ => _.SendAwait(It.IsAny<IList<byte>>()))
                 .Returns(TestResponses.PingOk)
                 .Returns(TestResponses.Empty);
 
@@ -61,7 +61,7 @@ namespace RfmOta.UnitTests.Ota
             // Arrange
             var stream = SetupHexStream();
 
-            _mockRfmusb.SetupSequence(_ => _.Transmit(It.IsAny<IList<byte>>()))
+            _mockRfmusb.SetupSequence(_ => _.SendAwait(It.IsAny<IList<byte>>()))
                 .Returns(TestResponses.PingOk)
                 .Returns(TestResponses.FlashSizeOk)
                 .Returns(TestResponses.Empty);
@@ -79,7 +79,7 @@ namespace RfmOta.UnitTests.Ota
             // Arrange
             var stream = SetupHexStream();
 
-            _mockRfmusb.SetupSequence(_ => _.Transmit(It.IsAny<IList<byte>>()))
+            _mockRfmusb.SetupSequence(_ => _.SendAwait(It.IsAny<IList<byte>>()))
                 .Returns(TestResponses.PingOk)
                 .Returns(TestResponses.FlashSizeOk)
                 .Returns(TestResponses.EraseOk)
@@ -98,7 +98,7 @@ namespace RfmOta.UnitTests.Ota
             // Arrange
             var stream = SetupHexStream();
 
-            _mockRfmusb.SetupSequence(_ => _.Transmit(It.IsAny<IList<byte>>()))
+            _mockRfmusb.SetupSequence(_ => _.SendAwait(It.IsAny<IList<byte>>()))
                 .Returns(TestResponses.PingOk)
                 .Returns(TestResponses.FlashSizeOk)
                 .Returns(TestResponses.EraseOk)
@@ -121,7 +121,7 @@ namespace RfmOta.UnitTests.Ota
             // Arrange
             var stream = SetupHexStream();
 
-            _mockRfmusb.SetupSequence(_ => _.Transmit(It.IsAny<IList<byte>>()))
+            _mockRfmusb.SetupSequence(_ => _.SendAwait(It.IsAny<IList<byte>>()))
                 .Returns(TestResponses.PingOk)
                 .Returns(TestResponses.FlashSizeOk)
                 .Returns(TestResponses.EraseOk)
@@ -140,7 +140,7 @@ namespace RfmOta.UnitTests.Ota
             // Arrange
             var stream = SetupHexStream();
 
-            _mockRfmusb.SetupSequence(_ => _.Transmit(It.IsAny<IList<byte>>()))
+            _mockRfmusb.SetupSequence(_ => _.SendAwait(It.IsAny<IList<byte>>()))
                .Returns(TestResponses.PingOk)
                .Returns(TestResponses.FlashSizeOk)
                .Returns(TestResponses.EraseOk)

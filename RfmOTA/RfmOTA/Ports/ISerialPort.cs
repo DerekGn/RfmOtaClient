@@ -9,5 +9,7 @@ namespace RfmOta.Ports
         void Open();
 
         void Close();
+
+        void Write(string text);
     }
 }

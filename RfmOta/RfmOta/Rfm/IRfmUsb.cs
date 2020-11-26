@@ -16,7 +16,7 @@ namespace RfmOta.Rfm
         public int Timeout { get; set; }
         public void Open(string serialPort);
         public void Close();
-        IList<byte> Transmit(IList<byte> data);
+        IList<byte> SendAwait(IList<byte> data);
         void Send(IList<byte> data);
     }
 }

@@ -3,6 +3,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using RfmOta.Ota;
+using RfmOta.Ports;
+using RfmOta.Rfm;
 using Serilog;
 using System;
 using System.Collections.Generic;
@@ -69,6 +71,8 @@ namespace RfmOta
                 .AddLogging(builder => builder.AddSerilog())
                 .AddSingleton(_configuration)
                 .AddLogging()
+                .AddRfmUsb()
+                .AddPorts()
                 .AddOta();
 
             return serviceCollection.BuildServiceProvider();

@@ -24,7 +24,6 @@ namespace RfmOta.Ports
             _serialPort.ErrorReceived += new SerialErrorReceivedEventHandler(ErrorReceivedHandler);
         }
 
-
         public bool IsOpen => _serialPort != null && _serialPort.IsOpen;
 
         public void Open()
@@ -35,6 +34,10 @@ namespace RfmOta.Ports
         public void Close()
         {
             _serialPort.Close();
+        }
+        public void Write(string text)
+        {
+            _serialPort.Write(text);
         }
 
         private void ErrorReceivedHandler(object sender, SerialErrorReceivedEventArgs e)
@@ -77,9 +80,6 @@ namespace RfmOta.Ports
             Dispose(disposing: true);
             System.GC.SuppressFinalize(this);
         }
-
-
-
         #endregion
     }
 }

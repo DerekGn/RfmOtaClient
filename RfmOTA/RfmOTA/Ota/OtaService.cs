@@ -96,7 +96,7 @@ namespace RfmOta.Ota
                 nameof(OtaService),
                 () =>
                 {
-                    _rfmUsb.Transmit(new List<byte>() { 0x01, (byte)RequestType.Reboot });
+                    _rfmUsb.Send(new List<byte>() { 0x01, (byte)RequestType.Reboot });
 
                     return true;
                 });
@@ -193,7 +193,7 @@ namespace RfmOta.Ota
             int expectedSize, ResponseType expectedResponse,
             out IList<byte> response, [CallerMemberName] string memberName = "")
         {
-            response = _rfmUsb.Transmit(request);
+            response = _rfmUsb.SendAwait(request);
 
             if (response.Count == 0 || response.Count < expectedSize)
             {
