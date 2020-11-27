@@ -1,4 +1,28 @@
-﻿using Microsoft.Extensions.Logging;
+﻿/*
+* MIT License
+*
+* Copyright (c) 2020 Derek Goslin http://corememorydump.blogspot.ie/
+*
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
+*
+* The above copyright notice and this permission notice shall be included in all
+* copies or substantial portions of the Software.
+*
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+* SOFTWARE.
+*/
+
+using Microsoft.Extensions.Logging;
 using RfmOta.Ports;
 using RfmOta.Rfm.Exceptions;
 using System;
@@ -6,14 +30,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Ports;
 using System.Linq;
-using System.Threading;
 
 namespace RfmOta.Rfm
 {
     internal class RfmUsb : IRfmUsb
     {
         private readonly ISerialPortFactory _serialPortFactory;
-        private readonly AutoResetEvent _autoResetEvent;
         private readonly ILogger<IRfmUsb> _logger;
 
         private IntermediateMode _intermediateMode;
@@ -25,22 +47,33 @@ namespace RfmOta.Rfm
         private bool _variableLenght;
         private byte _payloadLenght;
         private byte _fifoThreshold;
+        private string _version;
 
         public RfmUsb(ILogger<IRfmUsb> logger, ISerialPortFactory serialPortFactory)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _serialPortFactory = serialPortFactory ?? throw new ArgumentNullException(nameof(serialPortFactory));
-
-            _autoResetEvent = new AutoResetEvent(false);
         }
 
+        public string Version
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_version))
+                {
+                    _version = SendCommand("g-fv");
+                }
+
+                return _version;
+            }
+        }
         public byte PayloadLenght
         {
             get => _payloadLenght;
             set
             {
                 _payloadLenght = value;
-                SendCommand($"s-pl 0x{_payloadLenght:X}");
+                SendCommandWithCheck($"s-pl 0x{_payloadLenght:X}");
             }
         }
         public bool VariableLenght
@@ -49,7 +82,7 @@ namespace RfmOta.Rfm
             set
             {
                 _variableLenght = value;
-                SendCommand($"s-pf {{_variableLenght ? 1 : 0}}");
+                SendCommandWithCheck($"s-pf {{_variableLenght ? 1 : 0}}");
             }
         }
         public EnterCondition EnterCondition
@@ -58,7 +91,7 @@ namespace RfmOta.Rfm
             set
             {
                 _enterCondition = value;
-                SendCommand($"s-amec 0x{((byte)_enterCondition):X}");
+                SendCommandWithCheck($"s-amec 0x{(byte)_enterCondition:X}");
             }
         }
         public IntermediateMode IntermediateMode
@@ -67,7 +100,7 @@ namespace RfmOta.Rfm
             set
             {
                 _intermediateMode = value;
-                SendCommand($"s-im {_intermediateMode}");
+                SendCommandWithCheck($"s-im {_intermediateMode}");
             }
         }
         public ExitCondition ExitCondition
@@ -76,7 +109,7 @@ namespace RfmOta.Rfm
             set
             {
                 _exitCondition = value;
-                SendCommand($"s-amexc {_exitCondition}");
+                SendCommandWithCheck($"s-amexc {_exitCondition}");
             }
         }
         public byte FifoThreshold
@@ -85,7 +118,7 @@ namespace RfmOta.Rfm
             set
             {
                 _fifoThreshold = value;
-                SendCommand($"s-ft {_fifoThreshold}");
+                SendCommandWithCheck($"s-ft {_fifoThreshold}");
             }
         }
         public bool TxStartCondition
@@ -94,11 +127,15 @@ namespace RfmOta.Rfm
             set
             {
                 _txStartCondition = value;
-                SendCommand($"s-tsc {_txStartCondition}");
+                SendCommandWithCheck($"s-tsc {{_txStartCondition ? 1 : 0}}");
             }
         }
         public int RetryCount { get; set; }
-        public int Timeout { get => _serialPort.ReadTimeout; set => _serialPort.ReadTimeout = value; }
+        public int Timeout
+        {
+            get => _serialPort.ReadTimeout;
+            set => _serialPort.ReadTimeout = value;
+        }
         public void Open(string serialPort)
         {
             try
@@ -111,9 +148,9 @@ namespace RfmOta.Rfm
                     _serialPort.DtrEnable = true;
                     _serialPort.RtsEnable = true;
 #warning TODO cleanup in dispose
-                    _serialPort.DataReceived += SerialPortDataReceived;
                     _serialPort.ErrorReceived += SerialPortErrorReceived;
                     _serialPort.PinChanged += SerialPortPinChanged;
+                    _serialPort.ReadTimeout = 500;
                     _serialPort.Open();
                 }
             }
@@ -133,16 +170,6 @@ namespace RfmOta.Rfm
                 _serialPort.Close();
             }
         }
-        public IList<byte> SendAwait(IList<byte> data)
-        {
-            List<byte> request = new List<byte>
-            {
-                (byte)data.Count
-            };
-            request.AddRange(data);
-
-            return new List<byte>();
-        }
         public void Send(IList<byte> data)
         {
             List<byte> request = new List<byte>
@@ -153,32 +180,37 @@ namespace RfmOta.Rfm
 
             _serialPort.Write($"{BitConverter.ToString(data.ToArray())}");
         }
-        private void SendCommand(string command)
+        public IList<byte> SendAwait(IList<byte> data)
+        {
+            List<byte> request = new List<byte>
+            {
+                (byte)data.Count
+            };
+            request.AddRange(data);
+
+            return new List<byte>();
+        }
+        private string SendCommand(string command)
         {
             _serialPort.Write($"{command}\r\n");
 
-            var result = _serialPort.ReadLine();
+            return _serialPort.ReadLine();
+        }
+        private void SendCommandWithCheck(string command)
+        {
+            var result = SendCommand(command);
 
-            if(result != "OK")
+            if (!result.StartsWith("OK"))
             {
                 throw new RfmUsbCommandExecutionException($"Command [{command}] Execution Failed Reason: [{result}]");
             }
         }
-
-        private void SerialPortErrorReceived(object sender, SerialErrorReceivedEventArgs e)
-        {
-            _serialError = e.EventType;
-
-            _autoResetEvent.Set();
-        }
-
         private void SerialPortPinChanged(object sender, SerialPinChangedEventArgs e)
         {
         }
-
-        private void SerialPortDataReceived(object sender, SerialDataReceivedEventArgs e)
+        private void SerialPortErrorReceived(object sender, SerialErrorReceivedEventArgs e)
         {
-            _autoResetEvent.Set();
+            _serialError = e.EventType;
         }
 
         #region IDisposible
@@ -190,7 +222,10 @@ namespace RfmOta.Rfm
             {
                 if (disposing)
                 {
-                    // TODO: dispose managed state (managed objects)
+                    if(_serialPort != null)
+                    {
+                        _serialPort.Close();
+                    }
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override finalizer
