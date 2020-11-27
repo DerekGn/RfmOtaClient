@@ -39,9 +39,9 @@ namespace RfmOta.Rfm
         public bool TxStartCondition { get; set; }
         public int RetryCount { get; set; }
         public int Timeout { get; set; }
-        public void Open(string serialPort);
         public void Close();
-        IList<byte> SendAwait(IList<byte> data);
+        public void Open(string serialPort);
         void Send(IList<byte> data);
+        IList<byte> SendAwait(IList<byte> data);
     }
 }

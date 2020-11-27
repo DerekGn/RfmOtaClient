@@ -158,7 +158,7 @@ namespace RfmOta.Ports
 
         public void WriteLine(string text)
         {
-            _serialPort.Write(text);
+            _serialPort.WriteLine(text);
         }
 
         private void PinChangedHandler(object sender, SerialPinChangedEventArgs e)

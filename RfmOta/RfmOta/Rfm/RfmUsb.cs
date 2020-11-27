@@ -28,20 +28,20 @@ using RfmOta.Rfm.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Ports;
 using System.Linq;
 
 namespace RfmOta.Rfm
 {
     internal class RfmUsb : IRfmUsb
     {
+        private const string ResponseOk = "OK";
+
         private readonly ISerialPortFactory _serialPortFactory;
         private readonly ILogger<IRfmUsb> _logger;
 
         private IntermediateMode _intermediateMode;
         private EnterCondition _enterCondition;
         private ExitCondition _exitCondition;
-        private SerialError _serialError;
         private ISerialPort _serialPort;
         private bool _txStartCondition;
         private bool _variableLenght;
@@ -73,7 +73,7 @@ namespace RfmOta.Rfm
             set
             {
                 _payloadLenght = value;
-                SendCommandWithCheck($"s-pl 0x{_payloadLenght:X}");
+                SendCommandWithCheck($"s-pl 0x{_payloadLenght:X}", ResponseOk);
             }
         }
         public bool VariableLenght
@@ -82,7 +82,7 @@ namespace RfmOta.Rfm
             set
             {
                 _variableLenght = value;
-                SendCommandWithCheck($"s-pf {{_variableLenght ? 1 : 0}}");
+                SendCommandWithCheck($"s-pf 0x0{(_variableLenght ? 0x01 : 0x00):X}", ResponseOk);
             }
         }
         public EnterCondition EnterCondition
@@ -91,7 +91,7 @@ namespace RfmOta.Rfm
             set
             {
                 _enterCondition = value;
-                SendCommandWithCheck($"s-amec 0x{(byte)_enterCondition:X}");
+                SendCommandWithCheck($"s-amec 0x0{(byte)_enterCondition:X}", "[0x0006]-Packet Sent");
             }
         }
         public IntermediateMode IntermediateMode
@@ -100,7 +100,7 @@ namespace RfmOta.Rfm
             set
             {
                 _intermediateMode = value;
-                SendCommandWithCheck($"s-im {_intermediateMode}");
+                SendCommandWithCheck($"s-im 0x0{(byte)_intermediateMode:X}", "[0x0002]-Rx");
             }
         }
         public ExitCondition ExitCondition
@@ -109,7 +109,7 @@ namespace RfmOta.Rfm
             set
             {
                 _exitCondition = value;
-                SendCommandWithCheck($"s-amexc {_exitCondition}");
+                SendCommandWithCheck($"s-amexc 0x0{(byte)_exitCondition:X}", "[0x0003]-Crc Ok");
             }
         }
         public byte FifoThreshold
@@ -118,7 +118,7 @@ namespace RfmOta.Rfm
             set
             {
                 _fifoThreshold = value;
-                SendCommandWithCheck($"s-ft {_fifoThreshold}");
+                SendCommandWithCheck($"s-ft 0x{_fifoThreshold:X}", ResponseOk);
             }
         }
         public bool TxStartCondition
@@ -127,14 +127,18 @@ namespace RfmOta.Rfm
             set
             {
                 _txStartCondition = value;
-                SendCommandWithCheck($"s-tsc {{_txStartCondition ? 1 : 0}}");
+                SendCommandWithCheck($"s-tsc 0x{(_txStartCondition ? 0x01 : 0x00)}", ResponseOk);
             }
         }
         public int RetryCount { get; set; }
         public int Timeout
         {
             get => _serialPort.ReadTimeout;
-            set => _serialPort.ReadTimeout = value;
+            set
+            {
+                _serialPort.ReadTimeout = value;
+                _serialPort.WriteTimeout = value;
+            }
         }
         public void Open(string serialPort)
         {
@@ -147,10 +151,8 @@ namespace RfmOta.Rfm
                     _serialPort.NewLine = "\r\n";
                     _serialPort.DtrEnable = true;
                     _serialPort.RtsEnable = true;
-#warning TODO cleanup in dispose
-                    _serialPort.ErrorReceived += SerialPortErrorReceived;
-                    _serialPort.PinChanged += SerialPortPinChanged;
                     _serialPort.ReadTimeout = 500;
+                    _serialPort.WriteTimeout = 500;
                     _serialPort.Open();
                 }
             }
@@ -163,6 +165,7 @@ namespace RfmOta.Rfm
                     $"Available Serial Ports: [{string.Join(", ", _serialPortFactory.GetSerialPorts())}]");
             }
         }
+
         public void Close()
         {
             if (_serialPort != null && _serialPort.IsOpen)
@@ -192,27 +195,24 @@ namespace RfmOta.Rfm
         }
         private string SendCommand(string command)
         {
-            _serialPort.Write($"{command}\r\n");
+            _serialPort.Write($"{command}\n");
 
-            return _serialPort.ReadLine();
+            var response = _serialPort.ReadLine();
+
+            _logger.LogDebug($"Command: [{command}] Result: [{response}]");
+
+            return response;
         }
-        private void SendCommandWithCheck(string command)
+        private void SendCommandWithCheck(string command, string response)
         {
             var result = SendCommand(command);
 
-            if (!result.StartsWith("OK"))
+            if (!result.StartsWith(response))
             {
-                throw new RfmUsbCommandExecutionException($"Command [{command}] Execution Failed Reason: [{result}]");
+                throw new RfmUsbCommandExecutionException($"Command: [{command}] Execution Failed Reason: [{result}]");
             }
         }
-        private void SerialPortPinChanged(object sender, SerialPinChangedEventArgs e)
-        {
-        }
-        private void SerialPortErrorReceived(object sender, SerialErrorReceivedEventArgs e)
-        {
-            _serialError = e.EventType;
-        }
-
+        
         #region IDisposible
         private bool disposedValue;
         
