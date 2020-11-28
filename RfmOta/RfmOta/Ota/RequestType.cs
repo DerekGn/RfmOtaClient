@@ -26,11 +26,11 @@ namespace RfmOta.Ota
 {
     internal enum RequestType
     {
-        Crc,
-        Ping,
-        Erase,
-        Reboot,
-        Write,
-        FlashSize
+        Crc = 0,
+        Ping = 1,
+        Erase = 2,
+        Write = 3,
+        Reboot = 4,
+        FlashSize = 5
     };
 }

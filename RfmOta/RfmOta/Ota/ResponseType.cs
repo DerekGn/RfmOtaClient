@@ -30,9 +30,11 @@ namespace RfmOta.Ota
         Crc = 0x81,
         Ping = 0x82,
         Erase = 0x83,
-        FlashSize = 0x84,
-        InvalidLocked = 0x85,
-        InvalidLength = 0x86,
-        InvalidAddress = 0x87
+        Write = 0x84,
+        Reboot = 085,
+        FlashSize = 0x86,
+        InvalidLocked = 0x87,
+        InvalidLength = 0x88,
+        InvalidAddress = 0x89
     };
 }
