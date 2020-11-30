@@ -39,11 +39,8 @@ namespace RfmOta.Rfm
         private readonly ISerialPortFactory _serialPortFactory;
         private readonly ILogger<IRfmUsb> _logger;
 
-        private IntermediateMode _intermediateMode;
-        private EnterCondition _enterCondition;
-        private ExitCondition _exitCondition;
         private ISerialPort _serialPort;
-        private bool _txStartCondition;
+        private byte _dioInteruptMask;
         private bool _variableLenght;
         private byte _payloadLenght;
         private byte _fifoThreshold;
@@ -85,33 +82,6 @@ namespace RfmOta.Rfm
                 SendCommandWithCheck($"s-pf 0x0{(_variableLenght ? 0x01 : 0x00):X}", ResponseOk);
             }
         }
-        public EnterCondition EnterCondition
-        {
-            get => _enterCondition;
-            set
-            {
-                _enterCondition = value;
-                SendCommandWithCheck($"s-amec 0x0{(byte)_enterCondition:X}", "[0x0006]-Packet Sent");
-            }
-        }
-        public IntermediateMode IntermediateMode
-        {
-            get => _intermediateMode;
-            set
-            {
-                _intermediateMode = value;
-                SendCommandWithCheck($"s-im 0x0{(byte)_intermediateMode:X}", "[0x0002]-Rx");
-            }
-        }
-        public ExitCondition ExitCondition
-        {
-            get => _exitCondition;
-            set
-            {
-                _exitCondition = value;
-                SendCommandWithCheck($"s-amexc 0x0{(byte)_exitCondition:X}", "[0x0003]-Crc Ok");
-            }
-        }
         public byte FifoThreshold
         {
             get => _fifoThreshold;
@@ -121,13 +91,13 @@ namespace RfmOta.Rfm
                 SendCommandWithCheck($"s-ft 0x{_fifoThreshold:X}", ResponseOk);
             }
         }
-        public bool TxStartCondition
+        public byte DioInterruptMask
         {
-            get => _txStartCondition;
+            get => _dioInteruptMask;
             set
             {
-                _txStartCondition = value;
-                SendCommandWithCheck($"s-tsc 0x{(_txStartCondition ? 0x01 : 0x00)}", ResponseOk);
+                _dioInteruptMask = value;
+                SendCommandWithCheck($"s-di 0x{_dioInteruptMask:X}", ResponseOk);
             }
         }
         public int RetryCount { get; set; }
@@ -151,8 +121,8 @@ namespace RfmOta.Rfm
                     _serialPort.NewLine = "\r\n";
                     _serialPort.DtrEnable = true;
                     _serialPort.RtsEnable = true;
-                    _serialPort.ReadTimeout = 500;
-                    _serialPort.WriteTimeout = 500;
+                    //_serialPort.ReadTimeout = 500;
+                    //_serialPort.WriteTimeout = 500;
                     _serialPort.Open();
                 }
             }
@@ -173,6 +143,10 @@ namespace RfmOta.Rfm
                 _serialPort.Close();
             }
         }
+        public void Reset()
+        {
+            SendCommandWithCheck($"e-r", ResponseOk);
+        }
         public void Send(IList<byte> data)
         {
             List<byte> request = new List<byte>
@@ -185,13 +159,27 @@ namespace RfmOta.Rfm
         }
         public IList<byte> SendAwait(IList<byte> data)
         {
-            List<byte> request = new List<byte>
-            {
-                (byte)data.Count
-            };
-            request.AddRange(data);
+            SendCommandWithCheck($"s-fifo {BitConverter.ToString(data.ToArray()).Replace("-", string.Empty)}", ResponseOk);
 
-            return new List<byte>();
+            SendCommandWithCheck($"s-om 3", "[0x0003]-Tx");
+
+            WaitForIrq();
+            
+            CheckIrq(2, "1:PACKET_SENT");
+
+            SendCommandWithCheck($"s-om 4", "[0x0004]-Rx");
+
+            WaitForIrq();
+
+            SendCommandWithCheck($"s-om 1", "[0x0001]-Standby");
+
+            var response = SendCommand("g-fifo");
+
+            return HexUtil.ToBytes(response);
+        }
+        public void SetDioMapping(Dio dio, DioMapping mapping)
+        {
+            SendCommandWithCheck($"s-dio {(int)dio} {(int)mapping}", "[0x0001]-Map 01");
         }
         private string SendCommand(string command)
         {
@@ -212,10 +200,36 @@ namespace RfmOta.Rfm
                 throw new RfmUsbCommandExecutionException($"Command: [{command}] Execution Failed Reason: [{result}]");
             }
         }
-        
+        private void WaitForIrq()
+        {
+            var irq = _serialPort.ReadLine();
+
+            if (irq != "DIO PIN IRQ [0x01]")
+            {
+                throw new RfmUsbCommandExecutionException($"Invalid response received for IRQ signal: [{irq}]");
+            }
+        }
+
+        private void CheckIrq(int index, string expected)
+        {
+            List<string> irqFlags = new List<string>();
+
+            _serialPort.Write($"g-irq\n");
+
+            for (int i = 0; i <= 13; i++)
+            {
+                irqFlags.Add(_serialPort.ReadLine());
+            }
+
+            if (irqFlags[index] != expected)
+            {
+                throw new RfmUsbCommandExecutionException($"Packet Not Sent");
+            }
+        }
+
         #region IDisposible
         private bool disposedValue;
-        
+
         protected virtual void Dispose(bool disposing)
         {
             if (!disposedValue)
@@ -247,7 +261,6 @@ namespace RfmOta.Rfm
             Dispose(disposing: true);
             System.GC.SuppressFinalize(this);
         }
-
         #endregion
     }
 }

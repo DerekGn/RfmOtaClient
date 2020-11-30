@@ -32,16 +32,15 @@ namespace RfmOta.Rfm
         string Version { get; }
         byte PayloadLenght { get; set; }
         bool VariableLenght { get; set; }
-        EnterCondition EnterCondition { get; set; }
-        IntermediateMode IntermediateMode { get; set; }
-        ExitCondition ExitCondition { get; set; }
         byte FifoThreshold { get; set; }
-        public bool TxStartCondition { get; set; }
+        byte DioInterruptMask { get; set; }
         public int RetryCount { get; set; }
         public int Timeout { get; set; }
+        public void Reset();
         public void Close();
         public void Open(string serialPort);
         void Send(IList<byte> data);
         IList<byte> SendAwait(IList<byte> data);
+        void SetDioMapping(Dio dio, DioMapping mapping);
     }
 }

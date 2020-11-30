@@ -24,15 +24,11 @@
 
 namespace RfmOta.Rfm
 {
-    internal enum EnterCondition
+    public enum Dio
     {
-        None,
-        FifoNotEmpty,
-        FifoLevel,
-        CrcOk,
-        PayloadReady,
-        SyncAddress,
-        PacketSent,
-        FifoEmpty
+        Dio0,
+        Dio1,
+        Dio2,
+        Dio3
     }
 }

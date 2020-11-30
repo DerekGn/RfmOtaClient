@@ -69,7 +69,7 @@ namespace RfmOta
 
                 if (otaservice.OtaUpdate(options, stream, out uint crc))
                 {
-                    logger.LogWarning($"OTA flash update completed. Crc: [{crc}]");
+                    logger.LogInformation($"OTA flash update completed. Crc: [0x{crc:X}]");
                 }
                 else
                 {

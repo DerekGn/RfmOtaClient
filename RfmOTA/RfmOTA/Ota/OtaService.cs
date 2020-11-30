@@ -32,6 +32,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
 
 namespace RfmOta.Ota
 {
@@ -42,6 +43,7 @@ namespace RfmOta.Ota
         private readonly IRfmUsb _rfmUsb;
 
         private uint _flashSize;
+        private uint _writeSize;
         private Stream _stream;
         private uint _crc;
 
@@ -77,11 +79,13 @@ namespace RfmOta.Ota
 
                 foreach (var step in _steps)
                 {
-                    if (!step())
+                    if (!step()) 
                     {
                         result = false;
                         break;
                     }
+
+                    Thread.Sleep(100);
                 }
 
                 crc = _crc;
@@ -108,7 +112,7 @@ namespace RfmOta.Ota
                     }
 
                     _crc = BitConverter.ToUInt32(response.ToArray(), 1);
-                    _logger.LogInformation($"Flash Crc: [{_crc}]");
+                    _logger.LogInformation($"Flash Crc: [0x{_crc:X}]");
 
                     return true;
                 });
@@ -136,7 +140,7 @@ namespace RfmOta.Ota
 
                     while (hexReader.Read(out uint address, out IList<byte> data))
                     {
-                        _logger.LogInformation($"Writing Address: [0x{address:X4}] Count: [0x{data.Count:X2}]" +
+                        _logger.LogInformation($"Writing Address: [0x{address:X}] Count: [0x{data.Count:X2}]" +
                             $" Data: [{BitConverter.ToString(data.ToArray()).Replace("-", "")}]");
 
                         var requestData = new List<byte>() { (byte)RequestType.Write };
@@ -187,8 +191,9 @@ namespace RfmOta.Ota
                         return false;
                     }
 
-                    _flashSize = BitConverter.ToUInt32(response.ToArray(), 1);
-                    _logger.LogInformation($"Flash Size: [{_flashSize}]");
+                    _flashSize = BitConverter.ToUInt32(response.ToArray(), 2);
+                    _writeSize = BitConverter.ToUInt32(response.ToArray(), 6);
+                    _logger.LogInformation($"Flash Size: [0x{_flashSize:X}] Write Size: [0x{_writeSize:X}]");
 
                     return true;
                 });
@@ -226,9 +231,16 @@ namespace RfmOta.Ota
                 return false;
             }
 
-            if (response[0] != (byte)expectedResponse)
+            if (response[0] != (byte)expectedSize)
             {
-                _logger.LogInformation($"BootLoader Invalid {memberName} Response: [{response[0]}]");
+                _logger.LogInformation($"BootLoader Invalid {memberName} Response Length: [{response[0]}]");
+
+                return false;
+            }
+
+            if (response[1] != (byte)expectedResponse)
+            {
+                _logger.LogInformation($"BootLoader Invalid {memberName} Response: [0x{response[1]:X}]");
 
                 return false;
             }
@@ -266,25 +278,21 @@ namespace RfmOta.Ota
         {
             _rfmUsb.Open(options.SerialPort);
 
-            _logger.LogInformation(_rfmUsb.Version);
+            _rfmUsb.Reset();
 
-            _rfmUsb.PayloadLenght = 0xFF;
+            _logger.LogInformation(_rfmUsb.Version);
 
             _rfmUsb.VariableLenght = true;
 
-            _rfmUsb.EnterCondition = EnterCondition.PacketSent;
+            _rfmUsb.FifoThreshold = 0x01;
 
-            _rfmUsb.IntermediateMode = IntermediateMode.Rx;
+            _rfmUsb.SetDioMapping(Dio.Dio1, DioMapping.DioMapping1);
 
-            _rfmUsb.ExitCondition = ExitCondition.CrcOkTimeout;
-
-            _rfmUsb.FifoThreshold = 0x02;
-
-            _rfmUsb.TxStartCondition = false;
+            _rfmUsb.DioInterruptMask = 0x01;
 
             _rfmUsb.RetryCount = options.RetryCount;
 
-            _rfmUsb.Timeout = options.Timeout;
+            //_rfmUsb.Timeout = options.Timeout;
         }
 
         #region

@@ -2,7 +2,7 @@
   "profiles": {
     "RfmOta": {
       "commandName": "Project",
-      "commandLineArgs": "-f RfmBootloader.hex -s COM14"
+      "commandLineArgs": "-f RfmBootloader.hex -s COM5"
     }
   }
 }

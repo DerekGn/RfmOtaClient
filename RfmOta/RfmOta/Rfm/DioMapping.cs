@@ -24,11 +24,11 @@
 
 namespace RfmOta.Rfm
 {
-    internal enum IntermediateMode
+    public enum DioMapping
     {
-        Sleep,
-        Standby,
-        Rx,
-        Tx
+        DioMapping0,
+        DioMapping1,
+        DioMapping2,
+        DioMapping3
     }
 }
