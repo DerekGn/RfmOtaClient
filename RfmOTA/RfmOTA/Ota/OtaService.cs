@@ -42,6 +42,7 @@ namespace RfmOta.Ota
         private readonly List<Func<bool>> _steps;
         private readonly IRfmUsb _rfmUsb;
 
+        private uint _startAddress;
         private uint _flashSize;
         private uint _writeSize;
         private Stream _stream;
@@ -84,8 +85,6 @@ namespace RfmOta.Ota
                         result = false;
                         break;
                     }
-
-                    Thread.Sleep(100);
                 }
 
                 crc = _crc;
@@ -191,9 +190,10 @@ namespace RfmOta.Ota
                         return false;
                     }
 
-                    _flashSize = BitConverter.ToUInt32(response.ToArray(), 2);
-                    _writeSize = BitConverter.ToUInt32(response.ToArray(), 6);
-                    _logger.LogInformation($"Flash Size: [0x{_flashSize:X}] Write Size: [0x{_writeSize:X}]");
+                    _startAddress = BitConverter.ToUInt32(response.ToArray(), 2);
+                    _flashSize = BitConverter.ToUInt32(response.ToArray(), 6);
+                    _writeSize = BitConverter.ToUInt32(response.ToArray(), 10);
+                    _logger.LogInformation($"App Start Address: [0x{_startAddress:X}] Flash Size: [0x{_flashSize:X}] Write Size: [0x{_writeSize:X}]");
 
                     return true;
                 });

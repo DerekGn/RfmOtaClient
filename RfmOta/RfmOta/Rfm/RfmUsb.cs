@@ -149,13 +149,7 @@ namespace RfmOta.Rfm
         }
         public void Send(IList<byte> data)
         {
-            List<byte> request = new List<byte>
-            {
-                (byte)data.Count
-            };
-            request.AddRange(data);
-
-            _serialPort.Write($"{BitConverter.ToString(data.ToArray())}");
+            _serialPort.Write($"{BitConverter.ToString(data.ToArray()).Replace("-", string.Empty)}");
         }
         public IList<byte> SendAwait(IList<byte> data)
         {
@@ -170,6 +164,8 @@ namespace RfmOta.Rfm
             SendCommandWithCheck($"s-om 4", "[0x0004]-Rx");
 
             WaitForIrq();
+
+            CheckIrq(1, "1:PAYLOAD_READY");
 
             SendCommandWithCheck($"s-om 1", "[0x0001]-Standby");
 
@@ -218,7 +214,11 @@ namespace RfmOta.Rfm
 
             for (int i = 0; i <= 13; i++)
             {
-                irqFlags.Add(_serialPort.ReadLine());
+                var flag = _serialPort.ReadLine();
+
+                _logger.LogDebug(flag);
+
+                irqFlags.Add(flag);
             }
 
             if (irqFlags[index] != expected)
