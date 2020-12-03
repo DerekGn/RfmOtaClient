@@ -284,7 +284,7 @@ namespace RfmOta.Ota
 
             _rfmUsb.VariableLenght = true;
 
-            _rfmUsb.FifoThreshold = 0x01;
+            _rfmUsb.TransmissionStart = true;
 
             _rfmUsb.SetDioMapping(Dio.Dio1, DioMapping.DioMapping1);
 

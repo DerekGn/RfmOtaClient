@@ -34,8 +34,9 @@ namespace RfmOta.Rfm
         bool VariableLenght { get; set; }
         byte FifoThreshold { get; set; }
         byte DioInterruptMask { get; set; }
-        public int RetryCount { get; set; }
-        public int Timeout { get; set; }
+        int RetryCount { get; set; }
+        int Timeout { get; set; }
+        bool TransmissionStart { get; set; }
         public void Reset();
         public void Close();
         public void Open(string serialPort);

@@ -40,6 +40,7 @@ namespace RfmOta.Rfm
         private readonly ILogger<IRfmUsb> _logger;
 
         private ISerialPort _serialPort;
+        private bool _transmissionStart;
         private byte _dioInteruptMask;
         private bool _variableLenght;
         private byte _payloadLenght;
@@ -110,6 +111,16 @@ namespace RfmOta.Rfm
                 _serialPort.WriteTimeout = value;
             }
         }
+
+        public bool TransmissionStart {
+            get => _transmissionStart;
+            set
+            {
+                _transmissionStart = value;
+                SendCommandWithCheck($"s-tsc 0x0{(_transmissionStart ? 0x01 : 0x00):X}", ResponseOk);
+            }
+        }
+
         public void Open(string serialPort)
         {
             try
@@ -155,17 +166,9 @@ namespace RfmOta.Rfm
         {
             SendCommandWithCheck($"s-fifo {BitConverter.ToString(data.ToArray()).Replace("-", string.Empty)}", ResponseOk);
 
-            SendCommandWithCheck($"s-om 3", "[0x0003]-Tx");
+            TransmitPacket();
 
-            WaitForIrq();
-            
-            CheckIrq(2, "1:PACKET_SENT");
-
-            SendCommandWithCheck($"s-om 4", "[0x0004]-Rx");
-
-            WaitForIrq();
-
-            CheckIrq(1, "1:PAYLOAD_READY");
+            WaitForResponse();
 
             SendCommandWithCheck($"s-om 1", "[0x0001]-Standby");
 
@@ -173,7 +176,7 @@ namespace RfmOta.Rfm
 
             return HexUtil.ToBytes(response);
         }
-        public void SetDioMapping(Dio dio, DioMapping mapping)
+        public void SetDioMapping(Dio dio, DioMapping mapping) 
         {
             SendCommandWithCheck($"s-dio {(int)dio} {(int)mapping}", "[0x0001]-Map 01");
         }
@@ -186,6 +189,22 @@ namespace RfmOta.Rfm
             _logger.LogDebug($"Command: [{command}] Result: [{response}]");
 
             return response;
+        }
+        private void WaitForResponse()
+        {
+            SendCommandWithCheck($"s-om 4", "[0x0004]-Rx");
+
+            WaitForIrq();
+
+            CheckIrq(1, "1:PAYLOAD_READY");
+        }
+        private void TransmitPacket()
+        {
+            SendCommandWithCheck($"s-om 3", "[0x0003]-Tx");
+
+            WaitForIrq();
+
+            CheckIrq(2, "1:PACKET_SENT");
         }
         private void SendCommandWithCheck(string command, string response)
         {
