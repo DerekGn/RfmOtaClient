@@ -40,66 +40,33 @@ namespace RfmOta.Rfm
         private readonly ILogger<IRfmUsb> _logger;
 
         private ISerialPort _serialPort;
-        private bool _transmissionStart;
-        private byte _dioInteruptMask;
-        private bool _variableLenght;
-        private byte _payloadLenght;
-        private byte _fifoThreshold;
-        private string _version;
-
+        
         public RfmUsb(ILogger<IRfmUsb> logger, ISerialPortFactory serialPortFactory)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _serialPortFactory = serialPortFactory ?? throw new ArgumentNullException(nameof(serialPortFactory));
         }
 
-        public string Version
-        {
-            get
-            {
-                if (string.IsNullOrEmpty(_version))
-                {
-                    _version = SendCommand("g-fv");
-                }
-
-                return _version;
-            }
-        }
+        public string Version => SendCommand("g-fv");
         public byte PayloadLenght
         {
-            get => _payloadLenght;
-            set
-            {
-                _payloadLenght = value;
-                SendCommandWithCheck($"s-pl 0x{_payloadLenght:X}", ResponseOk);
-            }
+            get => SendCommand("g-pl").ToBytes().First();
+            set => SendCommandWithCheck($"s-pl 0x{value:X}", ResponseOk);
         }
         public bool VariableLenght
         {
-            get => _variableLenght;
-            set
-            {
-                _variableLenght = value;
-                SendCommandWithCheck($"s-pf 0x0{(_variableLenght ? 0x01 : 0x00):X}", ResponseOk);
-            }
+            get => SendCommand("g-pf").ToBytes().First() == 1;
+            set => SendCommandWithCheck($"s-pf 0x0{(value ? 0x01 : 0x00):X}", ResponseOk);
         }
         public byte FifoThreshold
         {
-            get => _fifoThreshold;
-            set
-            {
-                _fifoThreshold = value;
-                SendCommandWithCheck($"s-ft 0x{_fifoThreshold:X}", ResponseOk);
-            }
+            get => SendCommand("g-ft").ToBytes().First();
+            set => SendCommandWithCheck($"s-ft 0x{value:X}", ResponseOk);
         }
         public byte DioInterruptMask
         {
-            get => _dioInteruptMask;
-            set
-            {
-                _dioInteruptMask = value;
-                SendCommandWithCheck($"s-di 0x{_dioInteruptMask:X}", ResponseOk);
-            }
+            get => SendCommand("g-di").ToBytes().First();
+            set=> SendCommandWithCheck($"s-di 0x{value:X}", ResponseOk);
         }
         public int RetryCount { get; set; }
         public int Timeout
@@ -112,13 +79,22 @@ namespace RfmOta.Rfm
             }
         }
 
-        public bool TransmissionStart {
-            get => _transmissionStart;
-            set
-            {
-                _transmissionStart = value;
-                SendCommandWithCheck($"s-tsc 0x0{(_transmissionStart ? 0x01 : 0x00):X}", ResponseOk);
-            }
+        public bool TransmissionStartCondition
+        {
+            get => SendCommand("g-tsc").ToBytes().First() == 1;
+            set => SendCommandWithCheck($"s-tsc 0x0{(value ? 0x01 : 0x00):X}", ResponseOk);
+        }
+
+        public byte RadioConfig
+        {
+            get => SendCommand($"g-rc").ToBytes().First();
+            set => SendCommandWithCheck($"s-rc {value}", ResponseOk);
+        }
+
+        public IEnumerable<byte> Sync
+        {
+            get => SendCommand($"g-sync").ToBytes();
+            set => SendCommandWithCheck($"s-sync {BitConverter.ToString(value.ToArray()).Replace("-", string.Empty)}", ResponseOk);
         }
 
         public void Open(string serialPort)
@@ -129,11 +105,12 @@ namespace RfmOta.Rfm
                 {
                     _serialPort = _serialPortFactory.CreateSerialPortInstance(serialPort);
 
+                    _serialPort.BaudRate = 28800;
                     _serialPort.NewLine = "\r\n";
                     _serialPort.DtrEnable = true;
                     _serialPort.RtsEnable = true;
-                    //_serialPort.ReadTimeout = 500;
-                    //_serialPort.WriteTimeout = 500;
+                    _serialPort.ReadTimeout = 500;
+                    _serialPort.WriteTimeout = 500;
                     _serialPort.Open();
                 }
             }
@@ -162,21 +139,13 @@ namespace RfmOta.Rfm
         {
             _serialPort.Write($"{BitConverter.ToString(data.ToArray()).Replace("-", string.Empty)}");
         }
-        public IList<byte> SendAwait(IList<byte> data)
+        public IList<byte> TransmitReceive(IList<byte> data, int timeout)
         {
-            SendCommandWithCheck($"s-fifo {BitConverter.ToString(data.ToArray()).Replace("-", string.Empty)}", ResponseOk);
+            var response = SendCommand($"e-txrx {BitConverter.ToString(data.ToArray()).Replace("-", string.Empty)} {timeout}");
 
-            TransmitPacket();
-
-            WaitForResponse();
-
-            SendCommandWithCheck($"s-om 1", "[0x0001]-Standby");
-
-            var response = SendCommand("g-fifo");
-
-            return HexUtil.ToBytes(response);
+            return response.ToBytes();
         }
-        public void SetDioMapping(Dio dio, DioMapping mapping) 
+        public void SetDioMapping(Dio dio, DioMapping mapping)
         {
             SendCommandWithCheck($"s-dio {(int)dio} {(int)mapping}", "[0x0001]-Map 01");
         }
@@ -190,22 +159,7 @@ namespace RfmOta.Rfm
 
             return response;
         }
-        private void WaitForResponse()
-        {
-            SendCommandWithCheck($"s-om 4", "[0x0004]-Rx");
 
-            WaitForIrq();
-
-            CheckIrq(1, "1:PAYLOAD_READY");
-        }
-        private void TransmitPacket()
-        {
-            SendCommandWithCheck($"s-om 3", "[0x0003]-Tx");
-
-            WaitForIrq();
-
-            CheckIrq(2, "1:PACKET_SENT");
-        }
         private void SendCommandWithCheck(string command, string response)
         {
             var result = SendCommand(command);
@@ -255,7 +209,7 @@ namespace RfmOta.Rfm
             {
                 if (disposing)
                 {
-                    if(_serialPort != null)
+                    if (_serialPort != null)
                     {
                         _serialPort.Close();
                     }

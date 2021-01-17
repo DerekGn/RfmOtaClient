@@ -36,12 +36,21 @@ namespace RfmOta.Rfm
         byte DioInterruptMask { get; set; }
         int RetryCount { get; set; }
         int Timeout { get; set; }
-        bool TransmissionStart { get; set; }
+        bool TransmissionStartCondition { get; set; }
+        byte RadioConfig { get; set; }
+        IEnumerable<byte> Sync { get; set; }
         public void Reset();
         public void Close();
         public void Open(string serialPort);
         void Send(IList<byte> data);
-        IList<byte> SendAwait(IList<byte> data);
+        /// <summary>
+        /// Transmit a packet of data bytes and wait for a response
+        /// </summary>
+        /// <param name="data">The data to transmit</param>
+        /// <param name="timeout">The timeout in milliseconds to wait for a response</param>
+        /// <returns>The received packet bytes</returns>
+        IList<byte> TransmitReceive(IList<byte> data, int timeout);
         void SetDioMapping(Dio dio, DioMapping mapping);
+        
     }
 }

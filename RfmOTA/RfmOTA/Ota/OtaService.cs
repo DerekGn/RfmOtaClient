@@ -55,12 +55,12 @@ namespace RfmOta.Ota
 
             _steps = new List<Func<bool>>
             {
-                () => PingBootLoader(),
-                () => GetFlashSize(),
+                //() => PingBootLoader(),
+                //() => GetFlashSize(),
                 () => EraseFlash(),
-                () => SendHexData(),
-                () => GetCrc(),
-                () => Reboot()
+                //() => SendHexData(),
+                //() => GetCrc(),
+                //() => Reboot()
             };
         }
 
@@ -80,7 +80,7 @@ namespace RfmOta.Ota
 
                 foreach (var step in _steps)
                 {
-                    if (!step()) 
+                    if (!step())
                     {
                         result = false;
                         break;
@@ -206,9 +206,10 @@ namespace RfmOta.Ota
                 () =>
                 {
                     if (!SendAndValidateResponse(
-                        new List<byte>() { 0x01, (byte)RequestType.Ping },
-                        PayloadSizes.PingResponse, ResponseType.Ping, out IList<byte> response))
+                    new List<byte>() { 0x01, (byte)RequestType.Ping },
+                    PayloadSizes.PingResponse, ResponseType.Ping, out IList<byte> response))
                     {
+                        _logger.LogInformation("BootLoader Ping NOk");
                         return false;
                     }
 
@@ -222,7 +223,7 @@ namespace RfmOta.Ota
             int expectedSize, ResponseType expectedResponse,
             out IList<byte> response, [CallerMemberName] string memberName = "")
         {
-            response = _rfmUsb.SendAwait(request);
+            response = _rfmUsb.TransmitReceive(request, 5000);
 
             if (response.Count == 0 || response.Count < expectedSize)
             {
@@ -282,17 +283,21 @@ namespace RfmOta.Ota
 
             _logger.LogInformation(_rfmUsb.Version);
 
+            _rfmUsb.RadioConfig = 23;
+
             _rfmUsb.VariableLenght = true;
 
-            _rfmUsb.TransmissionStart = true;
+            _rfmUsb.TransmissionStartCondition = true;
 
-            _rfmUsb.SetDioMapping(Dio.Dio1, DioMapping.DioMapping1);
+            _rfmUsb.Sync = new List<byte>() { 0x55, 0x55 };
 
-            _rfmUsb.DioInterruptMask = 0x01;
+            //_rfmUsb.SetDioMapping(Dio.Dio1, DioMapping.DioMapping1);
 
-            _rfmUsb.RetryCount = options.RetryCount;
+            //_rfmUsb.DioInterruptMask = 0x01;
 
-            //_rfmUsb.Timeout = options.Timeout;
+            //_rfmUsb.RetryCount = options.RetryCount;
+
+            _rfmUsb.Timeout = options.Timeout;
         }
 
         #region
