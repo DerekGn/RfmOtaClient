@@ -143,6 +143,11 @@ namespace RfmOta.Rfm
         {
             var response = SendCommand($"e-txrx {BitConverter.ToString(data.ToArray()).Replace("-", string.Empty)} {timeout}");
 
+            if (response.Contains("TX") || response.Contains("RX"))
+            {
+                throw new RfmUsbTransmitException($"Packet transmission failed: [{response}]");
+            }
+
             return response.ToBytes();
         }
         public void SetDioMapping(Dio dio, DioMapping mapping)
