@@ -28,9 +28,8 @@ namespace RfmOta.Ota
     {
         Crc = 0,
         Ping = 1,
-        Erase = 2,
-        Write = 3,
-        Reboot = 4,
-        FlashSize = 5
+        Write = 2,
+        Reboot = 3,
+        FlashSize = 4
     };
 }

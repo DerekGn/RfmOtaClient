@@ -32,7 +32,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Threading;
 
 namespace RfmOta.Ota
 {
@@ -43,8 +42,8 @@ namespace RfmOta.Ota
         private readonly IRfmUsb _rfmUsb;
 
         private uint _startAddress;
-        private uint _flashSize;
-        private uint _writeSize;
+        private uint _numberOfPages;
+        private uint _pageSize;
         private Stream _stream;
         private uint _crc;
 
@@ -55,10 +54,9 @@ namespace RfmOta.Ota
 
             _steps = new List<Func<bool>>
             {
-                //() => PingBootLoader(),
-                //() => GetFlashSize(),
-                () => EraseFlash(),
-                //() => SendHexData(),
+                () => PingBootLoader(),
+                () => GetFlashSize(),
+                () => SendHexData(),
                 //() => GetCrc(),
                 //() => Reboot()
             };
@@ -110,7 +108,7 @@ namespace RfmOta.Ota
                         return false;
                     }
 
-                    _crc = BitConverter.ToUInt32(response.ToArray(), 1);
+                    _crc = BitConverter.ToUInt32(response.ToArray(), 2);
                     _logger.LogInformation($"Flash Crc: [0x{_crc:X}]");
 
                     return true;
@@ -137,41 +135,26 @@ namespace RfmOta.Ota
                 {
                     using IntelHexReader hexReader = new IntelHexReader(_stream);
 
-                    while (hexReader.Read(out uint address, out IList<byte> data))
+                    while (hexReader.Read(out uint address, out IList<byte> hexData))
                     {
-                        _logger.LogInformation($"Writing Address: [0x{address:X}] Count: [0x{data.Count:X2}]" +
-                            $" Data: [{BitConverter.ToString(data.ToArray()).Replace("-", "")}]");
+                        address += _startAddress;
+                        _logger.LogInformation($"Writing Address: [0x{address:X}] Count: [0x{hexData.Count:X2}]" +
+                            $" Data: [{BitConverter.ToString(hexData.ToArray()).Replace("-", "")}]");
 
-                        var requestData = new List<byte>() { (byte)RequestType.Write };
-                        requestData.AddRange(BitConverter.GetBytes(address));
-                        requestData.AddRange(data);
+                        var request = new List<byte>
+                        {
+                            (byte)(6 + hexData.Count),
+                            (byte)RequestType.Write
+                        };
+                        request.AddRange(BitConverter.GetBytes(address));
+                        request.AddRange(hexData);
 
                         if (!SendAndValidateResponse(
-                            new List<byte>() { 0x01, (byte)RequestType.Write },
-                            PayloadSizes.OkResponse, ResponseType.Ok, out IList<byte> response))
+                            request, PayloadSizes.OkResponse, ResponseType.Ok, out IList<byte> response))
                         {
                             return false;
                         }
                     }
-
-                    return true;
-                });
-        }
-
-        private bool EraseFlash()
-        {
-            return HandleRfmUsbOperation(
-                nameof(OtaService),
-                () =>
-                {
-                    if (!SendAndValidateResponse(
-                        new List<byte>() { 0x01, (byte)RequestType.Erase },
-                        PayloadSizes.EraseResponse, ResponseType.Erase, out IList<byte> response))
-                    {
-                        return false;
-                    }
-
-                    _logger.LogInformation("BootLoader Erase Ok");
 
                     return true;
                 });
@@ -191,9 +174,10 @@ namespace RfmOta.Ota
                     }
 
                     _startAddress = BitConverter.ToUInt32(response.ToArray(), 2);
-                    _flashSize = BitConverter.ToUInt32(response.ToArray(), 6);
-                    _writeSize = BitConverter.ToUInt32(response.ToArray(), 10);
-                    _logger.LogInformation($"App Start Address: [0x{_startAddress:X}] Flash Size: [0x{_flashSize:X}] Write Size: [0x{_writeSize:X}]");
+                    _numberOfPages = BitConverter.ToUInt32(response.ToArray(), 6);
+                    _pageSize = BitConverter.ToUInt32(response.ToArray(), 10);
+                    _logger.LogInformation($"App Start Address: [0x{_startAddress:X}] Number Of Pages: [0x{_numberOfPages:X}] " +
+                        $"Page Size: [0x{_pageSize:X}] Flash Size: [0x{_numberOfPages * _pageSize:X}]");
 
                     return true;
                 });
@@ -223,7 +207,7 @@ namespace RfmOta.Ota
             int expectedSize, ResponseType expectedResponse,
             out IList<byte> response, [CallerMemberName] string memberName = "")
         {
-            response = _rfmUsb.TransmitReceive(request, 5000);
+            response = _rfmUsb.TransmitReceive(request, 3000);
 
             if (response.Count == 0 || response.Count < expectedSize)
             {

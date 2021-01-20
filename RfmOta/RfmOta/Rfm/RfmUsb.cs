@@ -174,36 +174,6 @@ namespace RfmOta.Rfm
                 throw new RfmUsbCommandExecutionException($"Command: [{command}] Execution Failed Reason: [{result}]");
             }
         }
-        private void WaitForIrq()
-        {
-            var irq = _serialPort.ReadLine();
-
-            if (irq != "DIO PIN IRQ [0x01]")
-            {
-                throw new RfmUsbCommandExecutionException($"Invalid response received for IRQ signal: [{irq}]");
-            }
-        }
-
-        private void CheckIrq(int index, string expected)
-        {
-            List<string> irqFlags = new List<string>();
-
-            _serialPort.Write($"g-irq\n");
-
-            for (int i = 0; i <= 13; i++)
-            {
-                var flag = _serialPort.ReadLine();
-
-                _logger.LogDebug(flag);
-
-                irqFlags.Add(flag);
-            }
-
-            if (irqFlags[index] != expected)
-            {
-                throw new RfmUsbCommandExecutionException($"Packet Not Sent");
-            }
-        }
 
         #region IDisposible
         private bool disposedValue;

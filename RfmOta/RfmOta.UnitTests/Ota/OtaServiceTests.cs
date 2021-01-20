@@ -106,7 +106,6 @@ namespace RfmOta.UnitTests.Ota
             _mockRfmusb.SetupSequence(_ => _.TransmitReceive(It.IsAny<IList<byte>>(), 100))
                 .Returns(TestResponses.PingOk)
                 .Returns(TestResponses.FlashSizeOk)
-                .Returns(TestResponses.EraseOk)
                 .Returns(TestResponses.Empty);
 
             // Act
@@ -125,7 +124,6 @@ namespace RfmOta.UnitTests.Ota
             _mockRfmusb.SetupSequence(_ => _.TransmitReceive(It.IsAny<IList<byte>>(), 100))
                 .Returns(TestResponses.PingOk)
                 .Returns(TestResponses.FlashSizeOk)
-                .Returns(TestResponses.EraseOk)
                 .Returns(TestResponses.Ok)
                 .Returns(TestResponses.Ok)
                 .Returns(TestResponses.Ok)
@@ -148,7 +146,6 @@ namespace RfmOta.UnitTests.Ota
             _mockRfmusb.SetupSequence(_ => _.TransmitReceive(It.IsAny<IList<byte>>(), 100))
                 .Returns(TestResponses.PingOk)
                 .Returns(TestResponses.FlashSizeOk)
-                .Returns(TestResponses.EraseOk)
                 .Returns(TestResponses.Empty);
 
             // Act
@@ -167,7 +164,6 @@ namespace RfmOta.UnitTests.Ota
             _mockRfmusb.SetupSequence(_ => _.TransmitReceive(It.IsAny<IList<byte>>(), 100))
                .Returns(TestResponses.PingOk)
                .Returns(TestResponses.FlashSizeOk)
-               .Returns(TestResponses.EraseOk)
                .Returns(TestResponses.Ok)
                .Returns(TestResponses.Ok)
                .Returns(TestResponses.Ok)
