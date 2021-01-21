@@ -2,7 +2,7 @@
   "profiles": {
     "RfmOta": {
       "commandName": "Project",
-      "commandLineArgs": "-f RfmBootloader.hex -s COM2"
+      "commandLineArgs": "-f RfmTempSensor.hex -s COM2"
     }
   }
 }

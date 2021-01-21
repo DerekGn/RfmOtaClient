@@ -55,7 +55,7 @@ namespace RfmOta.Ota
             _steps = new List<Func<bool>>
             {
                 () => PingBootLoader(),
-                () => GetFlashSize(),
+                //() => GetFlashSize(),
                 () => SendHexData(),
                 //() => GetCrc(),
                 //() => Reboot()
@@ -137,22 +137,25 @@ namespace RfmOta.Ota
 
                     while (hexReader.Read(out uint address, out IList<byte> hexData))
                     {
-                        address += _startAddress;
-                        _logger.LogInformation($"Writing Address: [0x{address:X}] Count: [0x{hexData.Count:X2}]" +
+                        if (hexData.Count > 0)
+                        {
+                            _logger.LogInformation($"Writing Address: [0x{address:X}] Count: [0x{hexData.Count:X2}]" +
                             $" Data: [{BitConverter.ToString(hexData.ToArray()).Replace("-", "")}]");
 
-                        var request = new List<byte>
-                        {
-                            (byte)(6 + hexData.Count),
-                            (byte)RequestType.Write
-                        };
-                        request.AddRange(BitConverter.GetBytes(address));
-                        request.AddRange(hexData);
+                            var request = new List<byte>
+                            {
+                                (byte)(6 + hexData.Count),
+                                (byte)RequestType.Write
+                            };
+                            request.AddRange(BitConverter.GetBytes(address));
+                            request.AddRange(BitConverter.GetBytes(hexData.Count));
+                            request.AddRange(hexData);
 
-                        if (!SendAndValidateResponse(
-                            request, PayloadSizes.OkResponse, ResponseType.Ok, out IList<byte> response))
-                        {
-                            return false;
+                            if (!SendAndValidateResponse(
+                                request, PayloadSizes.OkResponse, ResponseType.Ok, out IList<byte> response))
+                            {
+                                return false;
+                            }
                         }
                     }
 
@@ -207,7 +210,7 @@ namespace RfmOta.Ota
             int expectedSize, ResponseType expectedResponse,
             out IList<byte> response, [CallerMemberName] string memberName = "")
         {
-            response = _rfmUsb.TransmitReceive(request, 3000);
+            response = _rfmUsb.TransmitReceive(request, 500);
 
             if (response.Count == 0 || response.Count < expectedSize)
             {
@@ -279,7 +282,7 @@ namespace RfmOta.Ota
 
             //_rfmUsb.DioInterruptMask = 0x01;
 
-            //_rfmUsb.RetryCount = options.RetryCount;
+            _rfmUsb.RetryCount = options.RetryCount;
 
             _rfmUsb.Timeout = options.Timeout;
         }

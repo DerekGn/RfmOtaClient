@@ -123,7 +123,6 @@ namespace RfmOta.Rfm
                     $"Available Serial Ports: [{string.Join(", ", _serialPortFactory.GetSerialPorts())}]");
             }
         }
-
         public void Close()
         {
             if (_serialPort != null && _serialPort.IsOpen)
@@ -141,14 +140,27 @@ namespace RfmOta.Rfm
         }
         public IList<byte> TransmitReceive(IList<byte> data, int timeout)
         {
-            var response = SendCommand($"e-txrx {BitConverter.ToString(data.ToArray()).Replace("-", string.Empty)} {timeout}");
+            int retries = RetryCount;
 
-            if (response.Contains("TX") || response.Contains("RX"))
+            do
             {
-                throw new RfmUsbTransmitException($"Packet transmission failed: [{response}]");
-            }
+                var response = SendCommand($"e-txrx {BitConverter.ToString(data.ToArray()).Replace("-", string.Empty)} {timeout}");
 
-            return response.ToBytes();
+                if (response.Contains("TX") || response.Contains("RX"))
+                {
+                    if (retries == 0)
+                    {
+                        throw new RfmUsbTransmitException($"Packet transmission failed: [{response}]");
+                    }
+
+                    retries--;
+                }
+                else
+                {
+                    return response.ToBytes();
+                }
+
+            } while (true);
         }
         public void SetDioMapping(Dio dio, DioMapping mapping)
         {
@@ -164,7 +176,6 @@ namespace RfmOta.Rfm
 
             return response;
         }
-
         private void SendCommandWithCheck(string command, string response)
         {
             var result = SendCommand(command);
