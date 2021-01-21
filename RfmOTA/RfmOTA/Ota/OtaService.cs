@@ -55,7 +55,7 @@ namespace RfmOta.Ota
             _steps = new List<Func<bool>>
             {
                 () => PingBootLoader(),
-                //() => GetFlashSize(),
+                () => GetFlashSize(),
                 () => SendHexData(),
                 //() => GetCrc(),
                 //() => Reboot()
@@ -210,30 +210,41 @@ namespace RfmOta.Ota
             int expectedSize, ResponseType expectedResponse,
             out IList<byte> response, [CallerMemberName] string memberName = "")
         {
-            response = _rfmUsb.TransmitReceive(request, 500);
+            Stopwatch sw = new Stopwatch();
 
-            if (response.Count == 0 || response.Count < expectedSize)
+            try
             {
-                _logger.LogError($"Invalid response received [{BitConverter.ToString(response.ToArray())}]");
+                sw.Start();
 
-                return false;
+                response = _rfmUsb.TransmitReceive(request, 1000);
+
+                if (response.Count == 0 || response.Count < expectedSize)
+                {
+                    _logger.LogError($"Invalid response received [{BitConverter.ToString(response.ToArray())}]");
+
+                    return false;
+                }
+
+                if (response[0] != (byte)expectedSize)
+                {
+                    _logger.LogInformation($"BootLoader Invalid {memberName} Response Length: [{response[0]}]");
+
+                    return false;
+                }
+
+                if (response[1] != (byte)expectedResponse)
+                {
+                    _logger.LogInformation($"BootLoader Invalid {memberName} Response: [0x{response[1]:X}]");
+
+                    return false;
+                }
+            }
+            finally
+            {
+                sw.Stop();
             }
 
-            if (response[0] != (byte)expectedSize)
-            {
-                _logger.LogInformation($"BootLoader Invalid {memberName} Response Length: [{response[0]}]");
-
-                return false;
-            }
-
-            if (response[1] != (byte)expectedResponse)
-            {
-                _logger.LogInformation($"BootLoader Invalid {memberName} Response: [0x{response[1]:X}]");
-
-                return false;
-            }
-
-            _logger.LogInformation($"BootLoader {memberName} Ok");
+            _logger.LogInformation($"BootLoader {memberName} Ok. Tx Time: [{sw.ElapsedTicks * 1000 / Stopwatch.Frequency} mS]");
 
             return true;
         }
