@@ -30,6 +30,7 @@ namespace RfmOta.Rfm
     internal interface IRfmUsb : IDisposable
     {
         string Version { get; }
+        int OutputPower { get; set; }
         byte PayloadLenght { get; set; }
         bool VariableLenght { get; set; }
         byte FifoThreshold { get; set; }

@@ -96,6 +96,10 @@ namespace RfmOta.Rfm
             get => SendCommand($"g-sync").ToBytes();
             set => SendCommandWithCheck($"s-sync {BitConverter.ToString(value.ToArray()).Replace("-", string.Empty)}", ResponseOk);
         }
+        public int OutputPower {
+            get => int.Parse(SendCommand($"g-op"));
+            set => SendCommandWithCheck($"s-op {value}", ResponseOk);
+        }
 
         public void Open(string serialPort)
         {

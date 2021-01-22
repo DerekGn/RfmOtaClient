@@ -54,8 +54,8 @@ namespace RfmOta.Ota
 
             _steps = new List<Func<bool>>
             {
-                () => PingBootLoader(),
-                () => GetFlashSize(),
+                //() => PingBootLoader(),
+                //() => GetFlashSize(),
                 () => SendHexData(),
                 //() => GetCrc(),
                 //() => Reboot()
@@ -135,21 +135,42 @@ namespace RfmOta.Ota
                 {
                     using IntelHexReader hexReader = new IntelHexReader(_stream);
 
-                    while (hexReader.Read(out uint address, out IList<byte> hexData))
+                    do
                     {
-                        if (hexData.Count > 0)
+                        var flashWrites = new FlashWrites();
+
+                        for (int i = 0; i < 2; i++)
                         {
-                            _logger.LogInformation($"Writing Address: [0x{address:X}] Count: [0x{hexData.Count:X2}]" +
-                            $" Data: [{BitConverter.ToString(hexData.ToArray()).Replace("-", "")}]");
+                            if (hexReader.Read(out uint address, out IList<byte> hexData))
+                            {
+                                if (hexData.Count > 0)
+                                {
+                                    _logger.LogInformation($"Writing Address: [0x{address:X}] Count: [0x{hexData.Count:X2}]" +
+                                            $" Data: [{BitConverter.ToString(hexData.ToArray()).Replace("-", "")}]");
+                                    var write = new List<byte>();
+                                    write.AddRange(BitConverter.GetBytes(address));
+                                    write.AddRange(BitConverter.GetBytes(hexData.Count));
+                                    write.AddRange(hexData);
+                                    flashWrites.AddWrite(write);
+                                }
+                            }
+                            else
+                            {
+                                break;
+                            }
+                        }
+
+                        if (flashWrites.Writes.Count > 0)
+                        {
+                            var payload = flashWrites.GetWritesBytes();
 
                             var request = new List<byte>
                             {
-                                (byte)(6 + hexData.Count),
-                                (byte)RequestType.Write
+                                (byte)(payload.Count + 2),
+                                (byte)RequestType.Write,
+                                (byte)flashWrites.Writes.Count,
                             };
-                            request.AddRange(BitConverter.GetBytes(address));
-                            request.AddRange(BitConverter.GetBytes(hexData.Count));
-                            request.AddRange(hexData);
+                            request.AddRange(payload);
 
                             if (!SendAndValidateResponse(
                                 request, PayloadSizes.OkResponse, ResponseType.Ok, out IList<byte> response))
@@ -157,9 +178,40 @@ namespace RfmOta.Ota
                                 return false;
                             }
                         }
-                    }
+                        else
+                        {
+                            break;
+                        }
+                    } while (true);
 
                     return true;
+
+                    //while (hexReader.Read(out uint address, out IList<byte> hexData))
+                    //{
+                    //    if (hexData.Count > 0)
+                    //    {
+                    //        _logger.LogInformation($"Writing Address: [0x{address:X}] Count: [0x{hexData.Count:X2}]" +
+                    //        $" Data: [{BitConverter.ToString(hexData.ToArray()).Replace("-", "")}]");
+
+                    //        var request = new List<byte>
+                    //        {
+                    //            (byte)(7 + hexData.Count),
+                    //            (byte)RequestType.Write,
+                    //            1,
+                    //        };
+                    //        request.AddRange(BitConverter.GetBytes(address));
+                    //        request.AddRange(BitConverter.GetBytes(hexData.Count));
+                    //        request.AddRange(hexData);
+
+                    //        if (!SendAndValidateResponse(
+                    //            request, PayloadSizes.OkResponse, ResponseType.Ok, out IList<byte> response))
+                    //        {
+                    //            return false;
+                    //        }
+                    //    }
+                    //}
+
+                    //return true;
                 });
         }
 
@@ -232,7 +284,7 @@ namespace RfmOta.Ota
                     return false;
                 }
 
-                if (response[1] != (byte)expectedResponse)
+                if (response[1] != (byte)expectedResponse + 0x80)
                 {
                     _logger.LogInformation($"BootLoader Invalid {memberName} Response: [0x{response[1]:X}]");
 
@@ -289,9 +341,7 @@ namespace RfmOta.Ota
 
             _rfmUsb.Sync = new List<byte>() { 0x55, 0x55 };
 
-            //_rfmUsb.SetDioMapping(Dio.Dio1, DioMapping.DioMapping1);
-
-            //_rfmUsb.DioInterruptMask = 0x01;
+            _rfmUsb.OutputPower = 1;
 
             _rfmUsb.RetryCount = options.RetryCount;
 

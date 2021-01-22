@@ -35,10 +35,10 @@ namespace RfmOta
         [Option('s', "serial", Required = true, HelpText = "The serial port that an RfmUsb device is connected")]
         public string SerialPort { get; set; }
 
-        [Option('r', "retry", Required = false, Default = 1, HelpText = "The number of transmission retries")]
+        [Option('r', "retry", Required = false, Default = 5, HelpText = "The number of transmission retries")]
         public int RetryCount { get; set; }
 
-        [Option('t', "timeout", Required = false, Default = 5000, HelpText = "The response timeout in milli seconds")]
+        [Option('t', "timeout", Required = false, Default = 10000, HelpText = "The response timeout in milli seconds")]
         public int Timeout { get; set; }
     }
 }
