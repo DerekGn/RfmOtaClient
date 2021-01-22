@@ -41,8 +41,11 @@ namespace RfmOta.Ota
         private readonly List<Func<bool>> _steps;
         private readonly IRfmUsb _rfmUsb;
 
-        private uint _startAddress;
+        private const int FlashWriteRows = 2;
+
+        private uint _flashWriteSize;
         private uint _numberOfPages;
+        private uint _startAddress;
         private uint _pageSize;
         private Stream _stream;
         private uint _crc;
@@ -54,10 +57,10 @@ namespace RfmOta.Ota
 
             _steps = new List<Func<bool>>
             {
-                //() => PingBootLoader(),
-                //() => GetFlashSize(),
+                () => PingBootLoader(),
+                () => GetFlashSize(),
                 () => SendHexData(),
-                //() => GetCrc(),
+                () => SetCrc(),
                 //() => Reboot()
             };
         }
@@ -95,23 +98,28 @@ namespace RfmOta.Ota
             return result;
         }
 
-        private bool GetCrc()
+        private bool SetCrc()
         {
             return HandleRfmUsbOperation(
                 nameof(OtaService),
                 () =>
                 {
-                    if (!SendAndValidateResponse(
-                        new List<byte>() { 0x01, (byte)RequestType.Crc },
-                        PayloadSizes.CrcResponse, ResponseType.Crc, out IList<byte> response))
+                    do
                     {
-                        return false;
-                    }
+                        var requestBytes = new List<byte>() { 0x05, (byte)RequestType.Crc };
+                        requestBytes.AddRange(BitConverter.GetBytes(_flashWriteSize));
 
-                    _crc = BitConverter.ToUInt32(response.ToArray(), 2);
-                    _logger.LogInformation($"Flash Crc: [0x{_crc:X}]");
+                        if(!SendAndValidateResponse(
+                            requestBytes,
+                            PayloadSizes.CrcResponse,
+                            ResponseType.Crc, out IList<byte> response))
+                        {
+                            return false;
+                        }
 
-                    return true;
+                        _crc = BitConverter.ToUInt32(response.ToArray(), 2);
+                        _logger.LogInformation($"Flash Crc: [0x{_crc:X}]");
+                    } while (true);
                 });
         }
 
@@ -139,7 +147,7 @@ namespace RfmOta.Ota
                     {
                         var flashWrites = new FlashWrites();
 
-                        for (int i = 0; i < 2; i++)
+                        for (int i = 0; i < FlashWriteRows; i++)
                         {
                             if (hexReader.Read(out uint address, out IList<byte> hexData))
                             {
@@ -152,6 +160,8 @@ namespace RfmOta.Ota
                                     write.AddRange(BitConverter.GetBytes(hexData.Count));
                                     write.AddRange(hexData);
                                     flashWrites.AddWrite(write);
+
+                                    _flashWriteSize += (uint)hexData.Count;
                                 }
                             }
                             else
@@ -184,34 +194,8 @@ namespace RfmOta.Ota
                         }
                     } while (true);
 
+                    _logger.LogInformation($"[{nameof(SendHexData)}] Flash Complete Image Size: [{_flashWriteSize:X}]");
                     return true;
-
-                    //while (hexReader.Read(out uint address, out IList<byte> hexData))
-                    //{
-                    //    if (hexData.Count > 0)
-                    //    {
-                    //        _logger.LogInformation($"Writing Address: [0x{address:X}] Count: [0x{hexData.Count:X2}]" +
-                    //        $" Data: [{BitConverter.ToString(hexData.ToArray()).Replace("-", "")}]");
-
-                    //        var request = new List<byte>
-                    //        {
-                    //            (byte)(7 + hexData.Count),
-                    //            (byte)RequestType.Write,
-                    //            1,
-                    //        };
-                    //        request.AddRange(BitConverter.GetBytes(address));
-                    //        request.AddRange(BitConverter.GetBytes(hexData.Count));
-                    //        request.AddRange(hexData);
-
-                    //        if (!SendAndValidateResponse(
-                    //            request, PayloadSizes.OkResponse, ResponseType.Ok, out IList<byte> response))
-                    //        {
-                    //            return false;
-                    //        }
-                    //    }
-                    //}
-
-                    //return true;
                 });
         }
 
@@ -286,7 +270,7 @@ namespace RfmOta.Ota
 
                 if (response[1] != (byte)expectedResponse + 0x80)
                 {
-                    _logger.LogInformation($"BootLoader Invalid {memberName} Response: [0x{response[1]:X}]");
+                    _logger.LogInformation($"BootLoader Invalid {memberName} Response: [{(ResponseType)(response[1] - 0x80)}]");
 
                     return false;
                 }
@@ -296,7 +280,7 @@ namespace RfmOta.Ota
                 sw.Stop();
             }
 
-            _logger.LogInformation($"BootLoader {memberName} Ok. Tx Time: [{sw.ElapsedTicks * 1000 / Stopwatch.Frequency} mS]");
+            _logger.LogInformation($"BootLoader {memberName} Ok. Tx Time: [{sw.ElapsedTicks * 1000 / Stopwatch.Frequency} ms]");
 
             return true;
         }
