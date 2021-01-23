@@ -24,6 +24,7 @@
 
 using HexIO;
 using Microsoft.Extensions.Logging;
+using RfmOta.Ota.Exceptions;
 using RfmOta.Rfm;
 using RfmOta.Rfm.Exceptions;
 using System;
@@ -41,6 +42,7 @@ namespace RfmOta.Ota
         private readonly List<Func<bool>> _steps;
         private readonly IRfmUsb _rfmUsb;
 
+        private const int MaxFlashWriteSize = 64;
         private const int FlashWriteRows = 2;
 
         private uint _flashWriteSize;
@@ -153,6 +155,11 @@ namespace RfmOta.Ota
                             {
                                 if (hexData.Count > 0)
                                 {
+                                    if(hexData.Count > MaxFlashWriteSize)
+                                    {
+                                        throw new OtaException($"Invalid flash write size [{hexData.Count}] Max: [{MaxFlashWriteSize}]");
+                                    }
+
                                     _logger.LogInformation($"Writing Address: [0x{address:X}] Count: [0x{hexData.Count:X2}]" +
                                             $" Data: [{BitConverter.ToString(hexData.ToArray()).Replace("-", "")}]");
                                     var write = new List<byte>();
@@ -194,7 +201,7 @@ namespace RfmOta.Ota
                         }
                     } while (true);
 
-                    _logger.LogInformation($"[{nameof(SendHexData)}] Flash Complete Image Size: [{_flashWriteSize:X}]");
+                    _logger.LogInformation($"[{nameof(SendHexData)}] Flash Complete Image Size: [0x{_flashWriteSize:X}]");
                     return true;
                 });
         }

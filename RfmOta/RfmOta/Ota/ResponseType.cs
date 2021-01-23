@@ -29,8 +29,6 @@ namespace RfmOta.Ota
         Ok,
         Crc,
         Ping,
-        Write,
-        Reboot,
         FlashSize,
         ErrorNumberWrites,
         ErrorInvalidLength,
