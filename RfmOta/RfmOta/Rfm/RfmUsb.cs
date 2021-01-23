@@ -40,35 +40,41 @@ namespace RfmOta.Rfm
         private readonly ILogger<IRfmUsb> _logger;
 
         private ISerialPort _serialPort;
-        
+
         public RfmUsb(ILogger<IRfmUsb> logger, ISerialPortFactory serialPortFactory)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _serialPortFactory = serialPortFactory ?? throw new ArgumentNullException(nameof(serialPortFactory));
         }
-
+        ///<inheritdoc/>
         public string Version => SendCommand("g-fv");
+        ///<inheritdoc/>
         public byte PayloadLenght
         {
             get => SendCommand("g-pl").ToBytes().First();
             set => SendCommandWithCheck($"s-pl 0x{value:X}", ResponseOk);
         }
+        ///<inheritdoc/>
         public bool VariableLenght
         {
             get => SendCommand("g-pf").ToBytes().First() == 1;
             set => SendCommandWithCheck($"s-pf 0x0{(value ? 0x01 : 0x00):X}", ResponseOk);
         }
+        ///<inheritdoc/>
         public byte FifoThreshold
         {
             get => SendCommand("g-ft").ToBytes().First();
             set => SendCommandWithCheck($"s-ft 0x{value:X}", ResponseOk);
         }
+        ///<inheritdoc/>
         public byte DioInterruptMask
         {
             get => SendCommand("g-di").ToBytes().First();
-            set=> SendCommandWithCheck($"s-di 0x{value:X}", ResponseOk);
+            set => SendCommandWithCheck($"s-di 0x{value:X}", ResponseOk);
         }
+        ///<inheritdoc/>
         public int RetryCount { get; set; }
+        ///<inheritdoc/>
         public int Timeout
         {
             get => _serialPort.ReadTimeout;
@@ -78,29 +84,31 @@ namespace RfmOta.Rfm
                 _serialPort.WriteTimeout = value;
             }
         }
-
+        ///<inheritdoc/>
         public bool TransmissionStartCondition
         {
             get => SendCommand("g-tsc").ToBytes().First() == 1;
             set => SendCommandWithCheck($"s-tsc 0x0{(value ? 0x01 : 0x00):X}", ResponseOk);
         }
-
+        ///<inheritdoc/>
         public byte RadioConfig
         {
             get => SendCommand($"g-rc").ToBytes().First();
             set => SendCommandWithCheck($"s-rc {value}", ResponseOk);
         }
-
+        ///<inheritdoc/>
         public IEnumerable<byte> Sync
         {
             get => SendCommand($"g-sync").ToBytes();
             set => SendCommandWithCheck($"s-sync {BitConverter.ToString(value.ToArray()).Replace("-", string.Empty)}", ResponseOk);
         }
-        public int OutputPower {
+        ///<inheritdoc/>
+        public int OutputPower
+        {
             get => int.Parse(SendCommand($"g-op"));
             set => SendCommandWithCheck($"s-op {value}", ResponseOk);
         }
-
+        ///<inheritdoc/>
         public void Open(string serialPort)
         {
             try
@@ -127,6 +135,7 @@ namespace RfmOta.Rfm
                     $"Available Serial Ports: [{string.Join(", ", _serialPortFactory.GetSerialPorts())}]");
             }
         }
+        ///<inheritdoc/>
         public void Close()
         {
             if (_serialPort != null && _serialPort.IsOpen)
@@ -134,14 +143,17 @@ namespace RfmOta.Rfm
                 _serialPort.Close();
             }
         }
+        ///<inheritdoc/>
         public void Reset()
         {
             SendCommandWithCheck($"e-r", ResponseOk);
         }
+        ///<inheritdoc/>
         public void Send(IList<byte> data)
         {
             _serialPort.Write($"{BitConverter.ToString(data.ToArray()).Replace("-", string.Empty)}");
         }
+        ///<inheritdoc/>
         public IList<byte> TransmitReceive(IList<byte> data, int timeout)
         {
             int retries = RetryCount;
@@ -166,6 +178,12 @@ namespace RfmOta.Rfm
 
             } while (true);
         }
+        ///<inheritdoc/>
+        public void Transmit(IList<byte> data, int timeout)
+        {
+            SendCommand($"e-tx {BitConverter.ToString(data.ToArray()).Replace("-", string.Empty)} {timeout}");
+        }
+        ///<inheritdoc/>
         public void SetDioMapping(Dio dio, DioMapping mapping)
         {
             SendCommandWithCheck($"s-dio {(int)dio} {(int)mapping}", "[0x0001]-Map 01");
@@ -224,6 +242,7 @@ namespace RfmOta.Rfm
             Dispose(disposing: true);
             System.GC.SuppressFinalize(this);
         }
+
         #endregion
     }
 }

@@ -63,7 +63,7 @@ namespace RfmOta.Ota
                 () => GetFlashSize(),
                 () => SendHexData(),
                 () => SetCrc(),
-                //() => Reboot()
+                () => Reboot()
             };
         }
 
@@ -106,22 +106,21 @@ namespace RfmOta.Ota
                 nameof(OtaService),
                 () =>
                 {
-                    do
+                    var requestBytes = new List<byte>() { 0x05, (byte)RequestType.Crc };
+                    requestBytes.AddRange(BitConverter.GetBytes(_flashWriteSize));
+
+                    if (!SendAndValidateResponse(
+                        requestBytes,
+                        PayloadSizes.CrcResponse,
+                        ResponseType.Crc, out IList<byte> response))
                     {
-                        var requestBytes = new List<byte>() { 0x05, (byte)RequestType.Crc };
-                        requestBytes.AddRange(BitConverter.GetBytes(_flashWriteSize));
+                        return false;
+                    }
 
-                        if(!SendAndValidateResponse(
-                            requestBytes,
-                            PayloadSizes.CrcResponse,
-                            ResponseType.Crc, out IList<byte> response))
-                        {
-                            return false;
-                        }
+                    _crc = BitConverter.ToUInt32(response.ToArray(), 2);
+                    _logger.LogInformation($"Flash Crc: [0x{_crc:X}]");
 
-                        _crc = BitConverter.ToUInt32(response.ToArray(), 2);
-                        _logger.LogInformation($"Flash Crc: [0x{_crc:X}]");
-                    } while (true);
+                    return true;
                 });
         }
 
@@ -131,7 +130,9 @@ namespace RfmOta.Ota
                 nameof(OtaService),
                 () =>
                 {
-                    _rfmUsb.Send(new List<byte>() { 0x01, (byte)RequestType.Reboot });
+                    SendRequest(new List<byte>() { 0x01, (byte)RequestType.Reboot });
+
+                    _logger.LogInformation("Reboot Pending");
 
                     return true;
                 });
@@ -155,7 +156,7 @@ namespace RfmOta.Ota
                             {
                                 if (hexData.Count > 0)
                                 {
-                                    if(hexData.Count > MaxFlashWriteSize)
+                                    if (hexData.Count > MaxFlashWriteSize)
                                     {
                                         throw new OtaException($"Invalid flash write size [{hexData.Count}] Max: [{MaxFlashWriteSize}]");
                                     }
@@ -291,7 +292,23 @@ namespace RfmOta.Ota
 
             return true;
         }
+        private void SendRequest(IList<byte> request, [CallerMemberName] string memberName = "")
+        {
+            Stopwatch sw = new Stopwatch();
 
+            try
+            {
+                sw.Start();
+
+                _rfmUsb.Transmit(request, 1000);
+            }
+            finally
+            {
+                sw.Stop();
+            }
+
+            _logger.LogInformation($"BootLoader {memberName} Ok. Tx Time: [{sw.ElapsedTicks * 1000 / Stopwatch.Frequency} ms]");
+        }
         private bool HandleRfmUsbOperation(string className, Func<bool> operation, [CallerMemberName] string memberName = "")
         {
             Stopwatch sw = new Stopwatch();
