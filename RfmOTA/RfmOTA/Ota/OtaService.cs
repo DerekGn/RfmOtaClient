@@ -43,7 +43,7 @@ namespace RfmOta.Ota
         private readonly IRfmUsb _rfmUsb;
 
         private const int MaxFlashWriteSize = 64;
-        private const int FlashWriteRows = 2;
+        private const int FlashWriteRows = 1;
 
         private uint _flashWriteSize;
         private uint _numberOfPages;
