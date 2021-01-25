@@ -56,7 +56,7 @@ namespace RfmOta.Rfm
         /// </summary>
         /// <param name="data">The data to transmit</param>
         /// <param name="timeout">The timeout in milliseconds to wait for a response</param>
-        void Transmit(IList<byte> data, int timeout);
+        void Transmit(IList<byte> data);
         void SetDioMapping(Dio dio, DioMapping mapping);
     }
 }

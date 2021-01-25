@@ -300,7 +300,7 @@ namespace RfmOta.Ota
             {
                 sw.Start();
 
-                _rfmUsb.Transmit(request, 1000);
+                _rfmUsb.Transmit(request);
             }
             finally
             {

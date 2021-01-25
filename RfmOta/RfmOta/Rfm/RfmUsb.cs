@@ -179,9 +179,29 @@ namespace RfmOta.Rfm
             } while (true);
         }
         ///<inheritdoc/>
-        public void Transmit(IList<byte> data, int timeout)
+        public void Transmit(IList<byte> data)
         {
-            SendCommand($"e-tx {BitConverter.ToString(data.ToArray()).Replace("-", string.Empty)} {timeout}");
+            int retries = RetryCount;
+
+            do
+            {
+                var response = SendCommand($"e-tx {BitConverter.ToString(data.ToArray()).Replace("-", string.Empty)}");
+
+                if (response.Contains("TX") || response.Contains("RX"))
+                {
+                    if (retries == 0)
+                    {
+                        throw new RfmUsbTransmitException($"Packet transmission failed: [{response}]");
+                    }
+
+                    retries--;
+                }
+                else
+                {
+                    break;
+                }
+
+            } while (true);
         }
         ///<inheritdoc/>
         public void SetDioMapping(Dio dio, DioMapping mapping)
