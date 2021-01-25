@@ -109,7 +109,7 @@ namespace RfmOta.Rfm
             set => SendCommandWithCheck($"s-op {value}", ResponseOk);
         }
         ///<inheritdoc/>
-        public void Open(string serialPort)
+        public void Open(string serialPort, int baudRate)
         {
             try
             {
@@ -117,7 +117,7 @@ namespace RfmOta.Rfm
                 {
                     _serialPort = _serialPortFactory.CreateSerialPortInstance(serialPort);
 
-                    _serialPort.BaudRate = 28800;
+                    _serialPort.BaudRate = baudRate;
                     _serialPort.NewLine = "\r\n";
                     _serialPort.DtrEnable = true;
                     _serialPort.RtsEnable = true;

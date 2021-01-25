@@ -40,5 +40,8 @@ namespace RfmOta
 
         [Option('t', "timeout", Required = false, Default = 5000, HelpText = "The response timeout in milli seconds")]
         public int Timeout { get; set; }
+
+        [Option('b', "baudrate", Required = false, Default = 115200, HelpText = "The baud rate for the serial port")]
+        public int BaudRate { get; set; }
     }
 }

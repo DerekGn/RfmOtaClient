@@ -335,7 +335,7 @@ namespace RfmOta.Ota
 
         private void InitaliseRfmUsb(Options options)
         {
-            _rfmUsb.Open(options.SerialPort);
+            _rfmUsb.Open(options.SerialPort, options.BaudRate);
 
             _rfmUsb.Reset();
 

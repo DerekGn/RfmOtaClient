@@ -42,7 +42,7 @@ namespace RfmOta.Rfm
         IEnumerable<byte> Sync { get; set; }
         public void Reset();
         public void Close();
-        public void Open(string serialPort);
+        public void Open(string serialPort, int baudRate);
         void Send(IList<byte> data);
         /// <summary>
         /// Transmit a packet of data bytes and wait for a response

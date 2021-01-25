@@ -54,7 +54,7 @@ namespace RfmOta.UnitTests.Rfm
                 .Returns(_mockSerialPort.Object);
 
             // Act
-            _rfmUsb.Open("ComPort");
+            _rfmUsb.Open("ComPort", 9600);
 
             // Assert
             _mockSerialPortFactory
