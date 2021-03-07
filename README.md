@@ -1,2 +1,2 @@
 # RfmOTA
-A OTA bootloader client app for RfmUsb
+A OTA bootloader client app for RfmUsb nodes
