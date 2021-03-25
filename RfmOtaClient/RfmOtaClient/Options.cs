@@ -22,21 +22,22 @@
 * SOFTWARE.
 */
 
-using Serilog;
-using Xunit.Abstractions;
+using CommandLine;
 
-namespace RfmOta.UnitTests
+namespace RfmOta
 {
-    public abstract class BaseTests
+    class Options
     {
-        protected ILogger Logger;
+        [Option('f', "file", Required = true, HelpText = "Hex File to be processed")]
+        public string HexFile { get; set; }
 
-        public BaseTests(ITestOutputHelper output)
-        {
-            Logger = new LoggerConfiguration()
-                .MinimumLevel.Verbose()
-                .WriteTo.TestOutput(output, Serilog.Events.LogEventLevel.Verbose)
-                .CreateLogger();
-        }
+        [Option('s', "serial", Required = true, HelpText = "The serial port that an RfmUsb device is connected")]
+        public string SerialPort { get; set; }
+
+        [Option('b', "baudrate", Required = false, Default = 115200, HelpText = "The baud rate for the serial port")]
+        public int BaudRate { get; set; }
+
+        [Option('p', "outputpower", Required = false, Default = 2, HelpText = "The output power of the RfmUsb in db")]
+        public int OutputPower { get; set; }
     }
 }

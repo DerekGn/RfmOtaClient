@@ -38,4 +38,8 @@
     </AssemblyAttribute>
   </ItemGroup>
   
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\RfmOta\RfmOta\RfmOta\RfmOta.csproj" />
+  </ItemGroup>
+  
 </Project>

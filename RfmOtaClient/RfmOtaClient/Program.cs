@@ -26,10 +26,8 @@ using CommandLine;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using RfmOta.Ota;
-using RfmOta.Ports;
-using RfmOta.Rfm;
-using RfmOta.Rfm.Exceptions;
+using RfmUsb;
+using RfmUsb.Exceptions;
 using Serilog;
 using System;
 using System.Collections.Generic;
@@ -67,7 +65,7 @@ namespace RfmOta
                 using var stream = File.OpenRead(options.HexFile);
                 using var otaservice = _serviceProvider.GetService<IOtaService>();
 
-                if (otaservice.OtaUpdate(options, stream, out uint crc))
+                if (otaservice.OtaUpdate(options.SerialPort, options.BaudRate, (byte) options.OutputPower, stream, out uint crc))
                 {
                     logger.LogInformation($"OTA flash update completed. Crc: [0x{crc:X}]");
                 }
@@ -104,8 +102,6 @@ namespace RfmOta
                 .AddLogging(builder => builder.AddSerilog())
                 .AddSingleton(_configuration)
                 .AddLogging()
-                .AddRfmUsb()
-                .AddPorts()
                 .AddOta();
 
             return serviceCollection.BuildServiceProvider();
