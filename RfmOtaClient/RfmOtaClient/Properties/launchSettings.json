@@ -2,7 +2,7 @@
   "profiles": {
     "RfmOta": {
       "commandName": "Project",
-      "commandLineArgs": "-f testapp.hex -s COM2"
+      "commandLineArgs": "-f testapp.hex -s COM4"
     }
   }
 }
