@@ -4,6 +4,8 @@ variables:
 - name: BuildParameters.Version
   value: $(Major).$(Minor).$(Patch).0
 
+name: v$(BuildParameters.Version)
+
 trigger:
 - main
 
