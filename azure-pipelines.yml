@@ -18,6 +18,7 @@ steps:
       command: 'publish'
       publishWebProjects: false
       projects: '$(BuildParameters.project)'
+      arguments: /p:Version=v$(Major).$(Minor).$(Patch)
   # - task: GitHubRelease@1
   #   displayName: "Publish Relase To GitHub"
   #   inputs:
