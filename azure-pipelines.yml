@@ -24,7 +24,7 @@ steps:
       publishWebProjects: false
       zipAfterPublish: true
       projects: '**\*.csproj'
-      arguments: '/p:AssemblyVersion=$(BuildParameters.Version) -o $(Build.BinariesDirectory)'
+      arguments: '/p:AssemblyVersion=$(BuildParameters.Version) -o $(Build.ArtifactStagingDirectory)'
   - task: GitHubRelease@1
     displayName: "Publish Relase To GitHub"
     inputs:
