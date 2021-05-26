@@ -1,6 +1,6 @@
 variables:
-- name: BuildParameters.solution
-  value: '**\*.sln'
+- name: BuildParameters.project
+  value: '**\RfmOtaClient.csproj'
 - name: TestProject
   value: '**/*UnitTests.csproj'
 
@@ -14,11 +14,10 @@ pool:
 
 steps:
   - task: DotNetCoreCLI@2
-    displayName: "Build Solution"
     inputs:
-      command: 'build'
-      projects: $(BuildParameters.solution)
-      configuration: $(BuildConfiguration)
+      command: 'publish'
+      publishWebProjects: false
+      projects: '$(BuildParameters.project)'
   # - task: GitHubRelease@1
   #   displayName: "Publish Relase To GitHub"
   #   inputs:
