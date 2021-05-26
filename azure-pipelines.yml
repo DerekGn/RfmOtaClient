@@ -1,8 +1,6 @@
 variables:
-- name: BuildParameters.project
-  value: '**\RfmOtaClient.csproj'
-- name: BuildParameters.Version
-  value: v$(Major).$(Minor).$(Patch)
+- name: BuildParameters.solution
+  value: '**\*.sln'
 
 name: v$(Major).$(Minor).$(Patch)
 
@@ -14,11 +12,12 @@ pool:
 
 steps:
   - task: DotNetCoreCLI@2
+    displayName: "Build Solution"
     inputs:
-      command: 'publish'
-      publishWebProjects: false
-      projects: '$(BuildParameters.project)'
-      arguments: -p:Version=v$(Major).$(Minor).$(Patch)
+      command: 'build'
+      projects: $(BuildParameters.solution)
+      configuration: $(BuildConfiguration)
+      arguments: /p:AssemblyVersion=1.2.3.4
   # - task: GitHubRelease@1
   #   displayName: "Publish Relase To GitHub"
   #   inputs:
