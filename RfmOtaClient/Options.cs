@@ -37,7 +37,7 @@ namespace RfmOta
         [Option('b', "baudrate", Required = false, Default = 115200, HelpText = "The baud rate for the serial port")]
         public int BaudRate { get; set; }
 
-        [Option('p', "outputpower", Required = false, Default = 2, HelpText = "The output power of the RfmUsb in db")]
+        [Option('p', "outputpower", Required = false, Default = 2, HelpText = "The output power of the RfmUsb in dbm", Min = -2, Max = 20)]
         public int OutputPower { get; set; }
     }
 }

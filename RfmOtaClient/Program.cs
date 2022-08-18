@@ -39,6 +39,10 @@ namespace RfmOta
         private static ServiceProvider _serviceProvider;
         private static IConfiguration _configuration;
 
+        protected Program()
+        {
+        }
+
         static void Main(string[] args)
         {
             _configuration = SetupConfiguration(args);
@@ -51,8 +55,7 @@ namespace RfmOta
             _serviceProvider = BuildServiceProvider();
 
             Parser.Default.ParseArguments<Options>(args)
-                .WithParsed(RunOptions)
-                .WithNotParsed(HandleParseError);
+                .WithParsed(RunOptions);
         }
 
         static void RunOptions(Options options)
@@ -64,7 +67,7 @@ namespace RfmOta
                 using var stream = File.OpenRead(options.HexFile);
                 using var otaservice = _serviceProvider.GetService<IOtaService>();
 
-                if (otaservice.OtaUpdate(options.SerialPort, options.BaudRate, (byte) options.OutputPower, stream, out uint crc))
+                if (otaservice.OtaUpdate((byte) options.OutputPower, stream, out uint crc))
                 {
                     logger.LogInformation($"OTA flash update completed. Crc: [0x{crc:X}]");
                 }
@@ -89,10 +92,6 @@ namespace RfmOta
             {
                 logger.LogError(ex, "An unhandled exception occurred");
             }
-        }
-
-        static void HandleParseError(IEnumerable<Error> errors)
-        {
         }
 
         private static ServiceProvider BuildServiceProvider()
